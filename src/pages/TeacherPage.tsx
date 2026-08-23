@@ -5,32 +5,66 @@ import { getProgress, getRewardState, getStudentProfile, getTrainingSessions } f
 import { daysSince, defaultRewardState, rewardLevel, spiritStageForLevel, type RewardState, type TrainingSessionRecord } from '../domain/rewards'
 import { defaultStudentProfile, type StudentProfile } from '../domain/account'
 import type { TargetProgress } from '../domain/types'
-import { cloudSyncEnabled, getTeacherDashboardCloud } from '../data/cloudSync'
+import { cloudSyncEnabled, getTeacherDashboardCloud, type TeacherDashboardSnapshot, type TeacherStudentSnapshot } from '../data/cloudSync'
 import { getCloudSession } from '../data/cloudSession'
 
 export function TeacherPage() {
-  const [profile, setProfile] = useState<StudentProfile>(defaultStudentProfile)
-  const [progress, setProgress] = useState<TargetProgress[]>([])
-  const [reward, setReward] = useState<RewardState>(defaultRewardState)
-  const [sessions, setSessions] = useState<TrainingSessionRecord[]>([])
+  const [group, setGroup] = useState<TeacherDashboardSnapshot['group']>({ joinCode: '', displayName: '' })
+  const [students, setStudents] = useState<TeacherStudentSnapshot[]>([])
+  const [selectedStudentId, setSelectedStudentId] = useState('')
+  const [isRefreshing, setIsRefreshing] = useState(false)
   useEffect(() => {
     const session = getCloudSession()
     if (cloudSyncEnabled && session?.role === 'teacher') {
-      getTeacherDashboardCloud().then((snapshot) => {
-        setProfile(snapshot.profile); setProgress(snapshot.progress); setReward(snapshot.reward); setSessions(snapshot.sessions)
-      }).catch(() => undefined)
-      return
+      const load = async () => {
+        setIsRefreshing(true)
+        try {
+          const snapshot = await getTeacherDashboardCloud()
+          setGroup(snapshot.group)
+          setStudents(snapshot.students)
+          setSelectedStudentId((current) => snapshot.students.some((student) => student.profile.studentId === current) ? current : (snapshot.students[0]?.profile.studentId ?? ''))
+        } catch { /* keep the latest successfully loaded list */ }
+        finally { setIsRefreshing(false) }
+      }
+      void load()
+      const timer = window.setInterval(() => { void load() }, 30_000)
+      return () => window.clearInterval(timer)
     }
-    Promise.all([getStudentProfile(), getProgress(), getRewardState(), getTrainingSessions()]).then(([nextProfile, nextProgress, nextReward, nextSessions]) => { setProfile(nextProfile); setProgress(nextProgress); setReward(nextReward); setSessions(nextSessions) })
+    Promise.all([getStudentProfile(), getProgress(), getRewardState(), getTrainingSessions()]).then(([profile, progress, reward, sessions]) => {
+      setGroup({ joinCode: profile.joinCode, displayName: profile.groupDisplayName })
+      setStudents([{ profile, progress, reward, sessions }])
+      setSelectedStudentId(profile.studentId)
+    })
   }, [])
-  const attempted = progress.filter((item) => item.attempts > 0)
-  const mastered = progress.filter((item) => item.state === 'mastered')
+  const selectedStudent = students.find((student) => student.profile.studentId === selectedStudentId) ?? students[0]
+  const profile: StudentProfile = selectedStudent?.profile ?? defaultStudentProfile
+  const progress: TargetProgress[] = selectedStudent?.progress ?? []
+  const reward: RewardState = selectedStudent?.reward ?? defaultRewardState
+  const sessions: TrainingSessionRecord[] = selectedStudent?.sessions ?? []
   const stable = progress.filter((item) => item.state === 'stable' || item.state === 'mastered')
   const difficult = useMemo(() => [...progress].filter((item) => item.state === 'unstable' || item.attempts - item.correct >= 2).sort((a, b) => (b.attempts - b.correct) - (a.attempts - a.correct)).slice(0, 5), [progress])
-  const courseProgress = Math.round((attempted.length / Math.max(1, lexicalItems.length + grammarPoints.length)) * 100)
-  const inactiveDays = daysSince(reward.lastActivityAt)
   const level = rewardLevel(reward.lifetimeEnergy)
   const stage = spiritStageForLevel(level)
+  const studentSummary = (student: TeacherStudentSnapshot) => {
+    const attemptedTargets = student.progress.filter((item) => item.attempts > 0)
+    return {
+      courseProgress: Math.round((attemptedTargets.length / Math.max(1, lexicalItems.length + grammarPoints.length)) * 100),
+      mastered: student.progress.filter((item) => item.state === 'mastered').length,
+      inactiveDays: daysSince(student.reward.lastActivityAt),
+    }
+  }
+  const inactiveStudents = students.filter((student) => studentSummary(student).inactiveDays >= 3)
+  const averageProgress = students.length ? Math.round(students.reduce((total, student) => total + studentSummary(student).courseProgress, 0) / students.length) : 0
+  const refreshStudents = async () => {
+    if (isRefreshing || !cloudSyncEnabled) return
+    setIsRefreshing(true)
+    try {
+      const snapshot = await getTeacherDashboardCloud()
+      setGroup(snapshot.group)
+      setStudents(snapshot.students)
+      setSelectedStudentId((current) => snapshot.students.some((student) => student.profile.studentId === current) ? current : (snapshot.students[0]?.profile.studentId ?? ''))
+    } finally { setIsRefreshing(false) }
+  }
   const signatures = grammarPoints.reduce((total, item) => total + item.examplePool.length * item.allowedTaskTypes.length, 0)
   const targetName = (targetId: string) => lexicalItems.find((item) => item.id === targetId)?.text ?? grammarPoints.find((item) => item.id === targetId)?.title ?? targetId
   const exportBuiltIn = () => {
@@ -43,15 +77,15 @@ export function TeacherPage() {
     <div className="page-title"><p className="kicker">TEACHER HOST / PROTECTED ROLE</p><h1>Teacher Dashboard</h1><p>Groups, learning progress, activity and reward signals in one calm overview.</p></div>
     <div className="teacher-notice"><ShieldCheck /><div><strong>Protected teacher interface</strong><span>Cloud access uses a separate teacher session. Students cannot open group data with a student account.</span></div></div>
     <div className="teacher-overview">
-      <article><span><UsersRound /></span><div><strong>1</strong><small>Group</small></div><em>{profile.joinCode}</em></article>
-      <article><span><UserRound /></span><div><strong>1</strong><small>Student</small></div><em>{inactiveDays >= 3 ? 'Needs attention' : 'Active'}</em></article>
-      <article><span><BookOpenCheck /></span><div><strong>{courseProgress}%</strong><small>Course progress</small></div><em>{stable.length} stable</em></article>
+      <article><span><UsersRound /></span><div><strong>1</strong><small>Group</small></div><em>{group.joinCode || '—'}</em></article>
+      <article><span><UserRound /></span><div><strong>{students.length}</strong><small>Students</small></div><em>{inactiveStudents.length ? `${inactiveStudents.length} need attention` : 'Active'}</em></article>
+      <article><span><BookOpenCheck /></span><div><strong>{averageProgress}%</strong><small>Average progress</small></div><em>{profile.displayName ? `${stable.length} stable for ${profile.displayName}` : 'No students yet'}</em></article>
       <article><span><Gift /></span><div><strong>Lv. {level}</strong><small>{stage.name}</small></div><em>{reward.lifetimeEnergy} energy</em></article>
     </div>
-    {inactiveDays >= 3 && <section className="attention-panel"><header><AlertTriangle /><div><strong>NEEDS ATTENTION — 1</strong><span>Linked to student CODE DECAY</span></div></header><div><b>{profile.displayName}</b><span>{profile.groupDisplayName}</span><em>{inactiveDays} days ago</em></div></section>}
+    {inactiveStudents.length > 0 && <section className="attention-panel"><header><AlertTriangle /><div><strong>NEEDS ATTENTION — {inactiveStudents.length}</strong><span>Linked to student CODE DECAY</span></div></header>{inactiveStudents.map((student) => { const days = studentSummary(student).inactiveDays; return <div key={student.profile.studentId}><b>{student.profile.displayName}</b><span>{student.profile.groupDisplayName}</span><em>{days} days ago</em></div> })}</section>}
     <div className="teacher-dashboard-grid">
-      <section className="teacher-data-card students-card"><header><div><p className="kicker">STUDENTS</p><h2>Student overview</h2></div><span>GROUP: {profile.joinCode}</span></header>
-        <div className="teacher-table"><div className="teacher-table-head"><span>Student</span><span>Progress</span><span>Mastered</span><span>Last activity</span></div><article><div><b>{profile.displayName}</b><small>{profile.wordcodeId}</small></div><strong>{courseProgress}%</strong><strong>{mastered.length}</strong><em>{inactiveDays === 0 ? 'Today' : `${inactiveDays} days ago`}</em></article></div>
+      <section className="teacher-data-card students-card"><header><div><p className="kicker">STUDENTS</p><h2>Student overview</h2></div><span>GROUP: {group.joinCode || '—'} · <button type="button" className="teacher-refresh" onClick={() => { void refreshStudents() }} disabled={isRefreshing}>{isRefreshing ? 'Updating…' : 'Refresh'}</button></span></header>
+        <div className="teacher-table"><div className="teacher-table-head"><span>Student</span><span>Progress</span><span>Mastered</span><span>Last activity</span></div>{students.length ? students.map((student) => { const summary = studentSummary(student); return <article key={student.profile.studentId} className={student.profile.studentId === profile.studentId ? 'selected' : ''} role="button" tabIndex={0} onClick={() => setSelectedStudentId(student.profile.studentId)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedStudentId(student.profile.studentId) }}><div><b>{student.profile.displayName}</b><small>{student.profile.wordcodeId}</small></div><strong>{summary.courseProgress}%</strong><strong>{summary.mastered}</strong><em>{summary.inactiveDays === 0 ? 'Today' : `${summary.inactiveDays} days ago`}</em></article> }) : <div className="mini-empty"><UserRound /><span>No students have joined this group yet.</span></div>}</div>
       </section>
       <section className="teacher-data-card reward-state-card"><header><div><p className="kicker">SPIRIT SIGNAL</p><h2>Reward state</h2></div><RadioTower /></header><div><span><strong>Level {level}</strong>{stage.name}</span><span><strong>{reward.stability}%</strong>Stability</span><span><strong>{reward.lifetimeEnergy}</strong>Energy</span><span><strong>{reward.activeDays.length}</strong>Active days</span></div></section>
     </div>

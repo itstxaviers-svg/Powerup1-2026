@@ -355,37 +355,42 @@ def _teacher_dashboard(event):
         return _response(401, {"message": "Teacher login required."})
     groups = _rows(_query("""
         DECLARE $join_code AS Utf8;
-        SELECT group_id FROM groups WHERE join_code = $join_code;
+        SELECT group_id, display_name FROM groups WHERE join_code = $join_code;
     """, join_code=identity.get("joinCode", "")))
     if not groups:
         return _response(404, {"message": "Teacher group not found."})
     members = _rows(_query("""
         DECLARE $group_id AS Utf8;
-        SELECT student_id, wordcode_id FROM group_members WHERE group_id = $group_id LIMIT 1;
+        SELECT student_id, wordcode_id FROM group_members WHERE group_id = $group_id;
     """, group_id=_value(groups[0], "group_id")))
-    if not members:
-        return _response(404, {"message": "No students have joined this group yet."})
-    member = members[0]
-    student = _find_student(_value(member, "wordcode_id"))
-    student_id = _value(member, "student_id")
-    progress_rows = _rows(_query("""
-        DECLARE $student_id AS Utf8;
-        SELECT payload FROM progress WHERE student_id = $student_id;
-    """, student_id=student_id))
-    reward_rows = _rows(_query("""
-        DECLARE $student_id AS Utf8;
-        SELECT payload FROM rewards WHERE student_id = $student_id;
-    """, student_id=student_id))
-    session_rows = _rows(_query("""
-        DECLARE $student_id AS Utf8;
-        SELECT payload FROM training_sessions WHERE student_id = $student_id ORDER BY completed_at DESC LIMIT 30;
-    """, student_id=student_id))
     default_reward = {"id": "current", "lifetimeEnergy": 0, "bonusEnergy": 0, "stability": 100, "lastActivityAt": None, "activeDays": [], "modeCounts": {}, "unlockedAccessories": []}
+    students = []
+    for member in members:
+        student = _find_student(_value(member, "wordcode_id"))
+        if not student:
+            continue
+        student_id = _value(member, "student_id")
+        progress_rows = _rows(_query("""
+            DECLARE $student_id AS Utf8;
+            SELECT payload FROM progress WHERE student_id = $student_id;
+        """, student_id=student_id))
+        reward_rows = _rows(_query("""
+            DECLARE $student_id AS Utf8;
+            SELECT payload FROM rewards WHERE student_id = $student_id;
+        """, student_id=student_id))
+        session_rows = _rows(_query("""
+            DECLARE $student_id AS Utf8;
+            SELECT payload FROM training_sessions WHERE student_id = $student_id ORDER BY completed_at DESC LIMIT 30;
+        """, student_id=student_id))
+        students.append({
+            "profile": _student_profile(student),
+            "progress": [json.loads(_value(row, "payload")) for row in progress_rows],
+            "reward": json.loads(_value(reward_rows[0], "payload")) if reward_rows else default_reward,
+            "sessions": [json.loads(_value(row, "payload")) for row in session_rows],
+        })
     return _response(200, {
-        "profile": _student_profile(student),
-        "progress": [json.loads(_value(row, "payload")) for row in progress_rows],
-        "reward": json.loads(_value(reward_rows[0], "payload")) if reward_rows else default_reward,
-        "sessions": [json.loads(_value(row, "payload")) for row in session_rows],
+        "group": {"joinCode": identity.get("joinCode", ""), "displayName": _value(groups[0], "display_name")},
+        "students": students,
     })
 
 

@@ -52,4 +52,4 @@ Example bootstrap body:
 
 The app writes every answer locally first. It then sends queued events in batches of at most 50. The server records event IDs, so a retry does not duplicate a completed session. Failed events receive an increasing retry delay and remain on the device.
 
-Current teacher dashboard reads the first student in the teacher's group. The schema already stores all group members, so the next UI step can add a student selector without changing student sync.
+The teacher dashboard reads every student in the teacher's group. Select a student in the list to inspect that learner's detailed progress and rewards.

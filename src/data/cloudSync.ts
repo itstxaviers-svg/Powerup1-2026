@@ -52,11 +52,16 @@ export async function loginTeacherCloud(email: string, password: string, remembe
   return result
 }
 
-export interface TeacherDashboardSnapshot {
+export interface TeacherStudentSnapshot {
   profile: StudentProfile
   progress: TargetProgress[]
   reward: RewardState
   sessions: TrainingSessionRecord[]
+}
+
+export interface TeacherDashboardSnapshot {
+  group: { joinCode: string; displayName: string }
+  students: TeacherStudentSnapshot[]
 }
 
 export async function getTeacherDashboardCloud() {
