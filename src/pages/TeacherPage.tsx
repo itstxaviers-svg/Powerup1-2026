@@ -1,12 +1,31 @@
-import { Activity, AlertTriangle, BookOpenCheck, CheckCircle2, Database, FileJson, Gift, GraduationCap, LibraryBig, RadioTower, ShieldCheck, Trash2, UserRound, UsersRound } from 'lucide-react'
+import { Activity, AlertTriangle, BookOpenCheck, CheckCircle2, Database, FileJson, GraduationCap, LibraryBig, ShieldCheck, Trash2, UserRound, UsersRound } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { grammarPoints, lexicalItems, units } from '../content/course'
 import { getProgress, getRewardState, getStudentProfile, getTrainingSessions } from '../data/db'
-import { daysSince, defaultRewardState, rewardLevel, spiritStageForLevel, type RewardState } from '../domain/rewards'
+import { daysSince, defaultRewardState, type RewardState } from '../domain/rewards'
 import { defaultStudentProfile, type StudentProfile } from '../domain/account'
 import type { TargetProgress } from '../domain/types'
 import { cloudSyncEnabled, deleteTeacherStudentCloud, getTeacherDashboardCloud, type TeacherDashboardSnapshot, type TeacherStudentSnapshot } from '../data/cloudSync'
 import { getCloudSession } from '../data/cloudSession'
+
+function startOfToday() {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+}
+
+function daysBeforeToday(isoDate: string) {
+  const date = new Date(isoDate)
+  const localDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+  return Math.round((startOfToday() - localDay) / 86_400_000)
+}
+
+function formatRegistrationDate(isoDate: string) {
+  const difference = daysBeforeToday(isoDate)
+  if (difference === 0) return 'Today'
+  if (difference === 1) return 'Yesterday'
+  if (difference === 2) return '2 days ago'
+  return new Date(isoDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
 
 export function TeacherPage() {
   const [group, setGroup] = useState<TeacherDashboardSnapshot['group']>({ joinCode: '', displayName: '' })
@@ -41,11 +60,10 @@ export function TeacherPage() {
   const profile: StudentProfile = selectedStudent?.profile ?? defaultStudentProfile
   const progress: TargetProgress[] = selectedStudent?.progress ?? []
   const reward: RewardState = selectedStudent?.reward ?? defaultRewardState
-  const stable = progress.filter((item) => item.state === 'stable' || item.state === 'mastered')
-  const frequentWordErrors = useMemo(() => [...progress]
+  const wordErrorsFor = (items: TargetProgress[]) => [...items]
     .filter((item) => lexicalItems.some((lexical) => lexical.id === item.targetId) && item.attempts - item.correct > 0)
     .sort((a, b) => (b.attempts - b.correct) - (a.attempts - a.correct))
-    .slice(0, 5), [progress])
+  const frequentWordErrors = useMemo(() => wordErrorsFor(progress).slice(0, 5), [progress])
   const studiedUnits = useMemo(() => units.map((unit) => {
     const targets = progress.filter((item) => item.attempts > 0 && (lexicalItems.some((lexical) => lexical.id === item.targetId && lexical.unitId === unit.id) || grammarPoints.some((grammar) => grammar.id === item.targetId && grammar.unitId === unit.id)))
     return { unit, targets, independent: targets.reduce((total, item) => total + item.independentCorrect, 0) }
@@ -55,18 +73,19 @@ export function TeacherPage() {
     const weekAgo = Date.now() - 6 * 24 * 60 * 60 * 1000
     return activityDays.filter((day) => new Date(`${day}T12:00:00`).getTime() >= weekAgo).length
   }, [activityDays])
-  const level = rewardLevel(reward.lifetimeEnergy)
-  const stage = spiritStageForLevel(level)
   const studentSummary = (student: TeacherStudentSnapshot) => {
-    const attemptedTargets = student.progress.filter((item) => item.attempts > 0)
     return {
-      courseProgress: Math.round((attemptedTargets.length / Math.max(1, lexicalItems.length + grammarPoints.length)) * 100),
-      mastered: student.progress.filter((item) => item.state === 'mastered').length,
       inactiveDays: daysSince(student.reward.lastActivityAt),
     }
   }
   const inactiveStudents = students.filter((student) => studentSummary(student).inactiveDays >= 3)
-  const averageProgress = students.length ? Math.round(students.reduce((total, student) => total + studentSummary(student).courseProgress, 0) / students.length) : 0
+  const registrationCounts = useMemo(() => students.reduce((counts, student) => {
+    const difference = daysBeforeToday(student.profile.createdAt)
+    if (difference === 0) counts.today += 1
+    else if (difference === 1) counts.yesterday += 1
+    else if (difference === 2) counts.twoDaysAgo += 1
+    return counts
+  }, { today: 0, yesterday: 0, twoDaysAgo: 0 }), [students])
   const refreshStudents = async () => {
     if (isRefreshing || !cloudSyncEnabled) return
     setIsRefreshing(true)
@@ -99,20 +118,20 @@ export function TeacherPage() {
   }
 
   return <div className="page teacher-page teacher-dashboard">
-    <div className="page-title"><p className="kicker">TEACHER HOST / PROTECTED ROLE</p><h1>Teacher Dashboard</h1><p>Groups, learning progress, activity and reward signals in one calm overview.</p></div>
+    <div className="page-title"><p className="kicker">TEACHER HOST / PROTECTED ROLE</p><h1>Teacher Dashboard</h1><p>See who has joined, when they practised, and which words need another review.</p></div>
     <div className="teacher-notice"><ShieldCheck /><div><strong>Protected teacher interface</strong><span>Cloud access uses a separate teacher session. Students cannot open group data with a student account.</span></div></div>
     <div className="teacher-overview">
       <article><span><UsersRound /></span><div><strong>1</strong><small>Group</small></div><em>{group.joinCode || '—'}</em></article>
-      <article><span><UserRound /></span><div><strong>{students.length}</strong><small>Students</small></div><em>{inactiveStudents.length ? `${inactiveStudents.length} need attention` : 'Active'}</em></article>
-      <article><span><BookOpenCheck /></span><div><strong>{averageProgress}%</strong><small>Average progress</small></div><em>{profile.displayName ? `${stable.length} stable for ${profile.displayName}` : 'No students yet'}</em></article>
-      <article><span><Gift /></span><div><strong>Lv. {level}</strong><small>{stage.name}</small></div><em>{reward.lifetimeEnergy} energy</em></article>
+      <article><span><UserRound /></span><div><strong>{students.length}</strong><small>Students</small></div><em>{inactiveStudents.length ? `${inactiveStudents.length} need attention` : 'All registrations'}</em></article>
+      <article><span><UserRound /></span><div><strong>{registrationCounts.today}</strong><small>Joined today</small></div><em>New registrations</em></article>
+      <article><span><UserRound /></span><div><strong>{registrationCounts.yesterday}</strong><small>Joined yesterday</small></div><em>{registrationCounts.twoDaysAgo} joined 2 days ago</em></article>
     </div>
     {inactiveStudents.length > 0 && <section className="attention-panel"><header><AlertTriangle /><div><strong>NEEDS ATTENTION — {inactiveStudents.length}</strong><span>Linked to student CODE DECAY</span></div></header>{inactiveStudents.map((student) => { const days = studentSummary(student).inactiveDays; return <div key={student.profile.studentId}><b>{student.profile.displayName}</b><span>{student.profile.groupDisplayName}</span><em>{days} days ago</em></div> })}</section>}
     <div className="teacher-dashboard-grid">
       <section className="teacher-data-card students-card"><header><div><p className="kicker">STUDENTS</p><h2>Student overview</h2></div><span>GROUP: {group.joinCode || '—'} · <button type="button" className="teacher-refresh" onClick={() => { void refreshStudents() }} disabled={isRefreshing}>{isRefreshing ? 'Updating…' : 'Refresh'}</button></span></header>
-        <div className="teacher-table"><div className="teacher-table-head"><span>Student</span><span>Progress</span><span>Mastered</span><span>Last activity</span><span>Account</span></div>{students.length ? students.map((student) => { const summary = studentSummary(student); const deleting = deletingStudentId === student.profile.studentId; return <article key={student.profile.studentId} className={student.profile.studentId === profile.studentId ? 'selected' : ''} role="button" tabIndex={0} onClick={() => setSelectedStudentId(student.profile.studentId)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedStudentId(student.profile.studentId) }}><div><b>{student.profile.displayName}</b><small>{student.profile.wordcodeId}</small></div><strong>{summary.courseProgress}%</strong><strong>{summary.mastered}</strong><em>{summary.inactiveDays === 0 ? 'Today' : `${summary.inactiveDays} days ago`}</em><button type="button" className="teacher-delete" disabled={deleting} onClick={(event) => { event.stopPropagation(); void deleteStudent(student) }} aria-label={`Delete ${student.profile.displayName}'s account`}><Trash2 size={14} />{deleting ? 'Deleting…' : 'Delete'}</button></article> }) : <div className="mini-empty"><UserRound /><span>No students have joined this group yet.</span></div>}</div>
+        <div className="registration-summary"><span><strong>{registrationCounts.today}</strong>joined today</span><span><strong>{registrationCounts.yesterday}</strong>joined yesterday</span><span><strong>{registrationCounts.twoDaysAgo}</strong>joined 2 days ago</span></div>
+        <div className="teacher-table"><div className="teacher-table-head"><span>Student</span><span>Joined</span><span>Words to review</span><span>Last activity</span><span>Account</span></div>{students.length ? students.map((student) => { const summary = studentSummary(student); const deleting = deletingStudentId === student.profile.studentId; const wordErrors = wordErrorsFor(student.progress).slice(0, 3); const hasWordPractice = student.progress.some((item) => lexicalItems.some((lexical) => lexical.id === item.targetId) && item.attempts > 0); return <article key={student.profile.studentId} className={student.profile.studentId === profile.studentId ? 'selected' : ''} role="button" tabIndex={0} onClick={() => setSelectedStudentId(student.profile.studentId)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedStudentId(student.profile.studentId) }}><div><b>{student.profile.displayName}</b><small>{student.profile.wordcodeId}</small></div><time>{formatRegistrationDate(student.profile.createdAt)}</time><div className="teacher-word-errors">{wordErrors.length ? wordErrors.map((item) => <span key={item.targetId}>{targetName(item.targetId)} · {item.attempts - item.correct}</span>) : <small>{hasWordPractice ? 'No word errors' : 'No word practice yet'}</small>}</div><em>{summary.inactiveDays === 0 ? 'Today' : `${summary.inactiveDays} days ago`}</em><button type="button" className="teacher-delete" disabled={deleting} onClick={(event) => { event.stopPropagation(); void deleteStudent(student) }} aria-label={`Delete ${student.profile.displayName}'s account`}><Trash2 size={14} />{deleting ? 'Deleting…' : 'Delete'}</button></article> }) : <div className="mini-empty"><UserRound /><span>No students have joined this group yet.</span></div>}</div>
       </section>
-      <section className="teacher-data-card reward-state-card"><header><div><p className="kicker">SPIRIT SIGNAL</p><h2>Reward state</h2></div><RadioTower /></header><div><span><strong>Level {level}</strong>{stage.name}</span><span><strong>{reward.stability}%</strong>Stability</span><span><strong>{reward.lifetimeEnergy}</strong>Energy</span><span><strong>{reward.activeDays.length}</strong>Active days</span></div></section>
     </div>
     <div className="teacher-dashboard-grid">
       <section className="teacher-data-card"><header><div><p className="kicker">SELECTED STUDENT / UNITS</p><h2>{profile.displayName ? `${profile.displayName}'s learning map` : 'Learning map'}</h2></div><BookOpenCheck /></header>{studiedUnits.length ? <div className="student-unit-list">{studiedUnits.map(({ unit, targets, independent }) => <article key={unit.id}><span>{unit.order}</span><div><strong>{unit.title}</strong><small>{targets.length} targets practised · {independent} independent decodes</small></div><em>{targets.filter((item) => item.state === 'mastered').length} mastered</em></article>)}</div> : <div className="mini-empty"><BookOpenCheck /><span>No unit activity has been recorded yet.</span></div>}</section>
