@@ -68,6 +68,10 @@ export async function getTeacherDashboardCloud() {
   return apiRequest<TeacherDashboardSnapshot>('/teacher/dashboard', { method: 'GET' }, true)
 }
 
+export async function deleteTeacherStudentCloud(wordcodeId: string) {
+  return apiRequest<{ ok: true; wordcodeId: string }>('/teacher/students/delete', { method: 'POST', body: JSON.stringify({ wordcodeId }) }, true)
+}
+
 export async function flushCloudSync() {
   if (!cloudSyncEnabled || !navigator.onLine || !getCloudSession() || flushPromise) return flushPromise ?? Promise.resolve()
   flushPromise = (async () => {

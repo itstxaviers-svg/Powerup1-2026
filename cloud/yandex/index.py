@@ -134,7 +134,10 @@ def _unb64(value):
 
 
 def _issue_token(role, subject_id, extra=None):
-    expires = int(time.time()) + 60 * 60 * 24 * 14
+    # A teacher works from one trusted browser; keeping that session for longer
+    # avoids a needless login every time the dashboard page is reloaded.
+    lifetime_days = 90 if role == "teacher" else 14
+    expires = int(time.time()) + 60 * 60 * 24 * lifetime_days
     payload = {"role": role, "sub": subject_id, "exp": expires, **(extra or {})}
     encoded = _b64(json.dumps(payload, separators=(",", ":")).encode())
     signature = _b64(hmac.new(os.environ["AUTH_SECRET"].encode(), encoded.encode(), hashlib.sha256).digest())
@@ -186,6 +189,16 @@ def _find_student(wordcode_id):
     """, wordcode_id=wordcode_id)
     rows = _rows(result)
     return rows[0] if rows else None
+
+
+def _student_for_identity(identity):
+    """Return the live student for a token, or None when its account was deleted."""
+    if not identity:
+        return None
+    student = _find_student(str(identity.get("wordcodeId", "")))
+    if not student or _value(student, "student_id") != identity.get("sub"):
+        return None
+    return student
 
 
 def _register_student(data):
@@ -241,7 +254,7 @@ def _login_student(data):
 def _change_pin(event, data):
     identity = _authenticate(event, "student")
     pin = str(data.get("pin", ""))
-    if not identity:
+    if not _student_for_identity(identity):
         return _response(401, {"message": "Please sign in again."})
     if not re.fullmatch(r"\d{6}", pin):
         return _response(400, {"message": "PIN must contain exactly 6 digits."})
@@ -293,7 +306,7 @@ def _login_teacher(data):
 
 def _sync_events(event, data):
     identity = _authenticate(event, "student")
-    if not identity:
+    if not _student_for_identity(identity):
         return _response(401, {"message": "Please sign in again."})
     events = data.get("events")
     if not isinstance(events, list) or len(events) > 50:
@@ -394,6 +407,36 @@ def _teacher_dashboard(event):
     })
 
 
+def _delete_teacher_student(event, data):
+    identity = _authenticate(event, "teacher")
+    wordcode_id = str(data.get("wordcodeId", "")).strip().upper()[:32]
+    if not identity:
+        return _response(401, {"message": "Teacher login required."})
+    if not wordcode_id:
+        return _response(400, {"message": "Student ID is required."})
+    groups = _rows(_query("""
+        DECLARE $join_code AS Utf8;
+        SELECT group_id FROM groups WHERE join_code = $join_code;
+    """, join_code=identity.get("joinCode", "")))
+    if not groups:
+        return _response(404, {"message": "Teacher group not found."})
+    group_id = _value(groups[0], "group_id")
+    student = _find_student(wordcode_id)
+    if not student or _value(student, "group_id") != group_id:
+        return _response(404, {"message": "Student not found in this group."})
+    student_id = _value(student, "student_id")
+    _query("""
+        DECLARE $student_id AS Utf8; DECLARE $wordcode_id AS Utf8; DECLARE $group_id AS Utf8;
+        DELETE FROM progress WHERE student_id = $student_id;
+        DELETE FROM rewards WHERE student_id = $student_id;
+        DELETE FROM training_sessions WHERE student_id = $student_id;
+        DELETE FROM sync_events WHERE student_id = $student_id;
+        DELETE FROM group_members WHERE group_id = $group_id AND student_id = $student_id;
+        DELETE FROM students WHERE wordcode_id = $wordcode_id;
+    """, student_id=student_id, wordcode_id=wordcode_id, group_id=group_id)
+    return _response(200, {"ok": True, "wordcodeId": wordcode_id})
+
+
 def handler(event, context):
     del context
     try:
@@ -412,6 +455,8 @@ def handler(event, context):
             return _login_teacher(data)
         if method == "GET" and path == "/teacher/dashboard":
             return _teacher_dashboard(event)
+        if method == "POST" and path == "/teacher/students/delete":
+            return _delete_teacher_student(event, data)
         if method == "POST" and path == "/sync/events":
             return _sync_events(event, data)
         if method == "POST" and path == "/setup/teacher":

@@ -53,3 +53,5 @@ Example bootstrap body:
 The app writes every answer locally first. It then sends queued events in batches of at most 50. The server records event IDs, so a retry does not duplicate a completed session. Failed events receive an increasing retry delay and remain on the device.
 
 The teacher dashboard reads every student in the teacher's group. Select a student in the list to inspect that learner's detailed progress and rewards.
+
+Deleting a student from the teacher dashboard permanently removes that student's cloud account, progress, rewards and session history. A deleted student's existing browser session is rejected at its next sync.

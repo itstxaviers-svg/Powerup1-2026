@@ -1,7 +1,8 @@
 import { ArrowRight, Gem, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { cloudSyncEnabled, loginTeacherCloud } from '../data/cloudSync'
+import { getCloudSession } from '../data/cloudSession'
 
 export function TeacherAuthPage() {
   const navigate = useNavigate()
@@ -10,6 +11,10 @@ export function TeacherAuthPage() {
   const [remember, setRemember] = useState(true)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (getCloudSession()?.role === 'teacher') navigate('/teacher', { replace: true })
+  }, [navigate])
 
   const login = async () => {
     if (!cloudSyncEnabled) { setMessage('Teacher cloud access is not configured on this installation.'); return }

@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage'
 import { SessionCompletePage } from './pages/SessionCompletePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TeacherPage } from './pages/TeacherPage'
+import { TeacherCoursePage } from './pages/TeacherCoursePage'
 import { TrainingPage } from './pages/TrainingPage'
 import { UnitPage } from './pages/UnitPage'
 import { RewardsPage } from './pages/RewardsPage'
@@ -20,6 +21,11 @@ import { cloudSyncEnabled } from './data/cloudSync'
 function ProtectedTeacherPage() {
   const session = getCloudSession()
   return session?.role === 'teacher' ? <Shell><TeacherPage /></Shell> : <Navigate to="/teacher/login" replace />
+}
+
+function ProtectedTeacherCoursePage() {
+  const session = getCloudSession()
+  return session?.role === 'teacher' ? <Shell><TeacherCoursePage /></Shell> : <Navigate to="/teacher/login" replace />
 }
 
 function ProtectedStudentPage({ children }: { children: ReactNode }) {
@@ -39,6 +45,7 @@ export default function App() {
     <Route path="/register" element={<AuthPage mode="register" />} />
     <Route path="/teacher/login" element={<TeacherAuthPage />} />
     <Route path="/teacher" element={<ProtectedTeacherPage />} />
+    <Route path="/teacher/course" element={<ProtectedTeacherCoursePage />} />
     <Route path="*" element={<ProtectedStudentPage><Shell><Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/unit/:unitId" element={<UnitPage />} />

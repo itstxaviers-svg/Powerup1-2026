@@ -1,11 +1,11 @@
-import { Activity, AlertTriangle, BookOpenCheck, CheckCircle2, Database, FileJson, Gift, GraduationCap, LibraryBig, RadioTower, ShieldCheck, UserRound, UsersRound } from 'lucide-react'
+import { Activity, AlertTriangle, BookOpenCheck, CheckCircle2, Database, FileJson, Gift, GraduationCap, LibraryBig, RadioTower, ShieldCheck, Trash2, UserRound, UsersRound } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { grammarPoints, lexicalItems, units } from '../content/course'
 import { getProgress, getRewardState, getStudentProfile, getTrainingSessions } from '../data/db'
 import { daysSince, defaultRewardState, rewardLevel, spiritStageForLevel, type RewardState, type TrainingSessionRecord } from '../domain/rewards'
 import { defaultStudentProfile, type StudentProfile } from '../domain/account'
 import type { TargetProgress } from '../domain/types'
-import { cloudSyncEnabled, getTeacherDashboardCloud, type TeacherDashboardSnapshot, type TeacherStudentSnapshot } from '../data/cloudSync'
+import { cloudSyncEnabled, deleteTeacherStudentCloud, getTeacherDashboardCloud, type TeacherDashboardSnapshot, type TeacherStudentSnapshot } from '../data/cloudSync'
 import { getCloudSession } from '../data/cloudSession'
 
 export function TeacherPage() {
@@ -13,6 +13,7 @@ export function TeacherPage() {
   const [students, setStudents] = useState<TeacherStudentSnapshot[]>([])
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [deletingStudentId, setDeletingStudentId] = useState('')
   useEffect(() => {
     const session = getCloudSession()
     if (cloudSyncEnabled && session?.role === 'teacher') {
@@ -65,6 +66,19 @@ export function TeacherPage() {
       setSelectedStudentId((current) => snapshot.students.some((student) => student.profile.studentId === current) ? current : (snapshot.students[0]?.profile.studentId ?? ''))
     } finally { setIsRefreshing(false) }
   }
+  const deleteStudent = async (student: TeacherStudentSnapshot) => {
+    const name = student.profile.displayName
+    const confirmed = window.confirm(`Delete ${name}'s account? Their cloud progress, rewards and session history will be permanently removed.`)
+    if (!confirmed) return
+    setDeletingStudentId(student.profile.studentId)
+    try {
+      await deleteTeacherStudentCloud(student.profile.wordcodeId)
+      setStudents((current) => current.filter((item) => item.profile.studentId !== student.profile.studentId))
+      if (selectedStudentId === student.profile.studentId) setSelectedStudentId('')
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'The account could not be deleted. Please try again.')
+    } finally { setDeletingStudentId('') }
+  }
   const signatures = grammarPoints.reduce((total, item) => total + item.examplePool.length * item.allowedTaskTypes.length, 0)
   const targetName = (targetId: string) => lexicalItems.find((item) => item.id === targetId)?.text ?? grammarPoints.find((item) => item.id === targetId)?.title ?? targetId
   const exportBuiltIn = () => {
@@ -85,7 +99,7 @@ export function TeacherPage() {
     {inactiveStudents.length > 0 && <section className="attention-panel"><header><AlertTriangle /><div><strong>NEEDS ATTENTION — {inactiveStudents.length}</strong><span>Linked to student CODE DECAY</span></div></header>{inactiveStudents.map((student) => { const days = studentSummary(student).inactiveDays; return <div key={student.profile.studentId}><b>{student.profile.displayName}</b><span>{student.profile.groupDisplayName}</span><em>{days} days ago</em></div> })}</section>}
     <div className="teacher-dashboard-grid">
       <section className="teacher-data-card students-card"><header><div><p className="kicker">STUDENTS</p><h2>Student overview</h2></div><span>GROUP: {group.joinCode || '—'} · <button type="button" className="teacher-refresh" onClick={() => { void refreshStudents() }} disabled={isRefreshing}>{isRefreshing ? 'Updating…' : 'Refresh'}</button></span></header>
-        <div className="teacher-table"><div className="teacher-table-head"><span>Student</span><span>Progress</span><span>Mastered</span><span>Last activity</span></div>{students.length ? students.map((student) => { const summary = studentSummary(student); return <article key={student.profile.studentId} className={student.profile.studentId === profile.studentId ? 'selected' : ''} role="button" tabIndex={0} onClick={() => setSelectedStudentId(student.profile.studentId)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedStudentId(student.profile.studentId) }}><div><b>{student.profile.displayName}</b><small>{student.profile.wordcodeId}</small></div><strong>{summary.courseProgress}%</strong><strong>{summary.mastered}</strong><em>{summary.inactiveDays === 0 ? 'Today' : `${summary.inactiveDays} days ago`}</em></article> }) : <div className="mini-empty"><UserRound /><span>No students have joined this group yet.</span></div>}</div>
+        <div className="teacher-table"><div className="teacher-table-head"><span>Student</span><span>Progress</span><span>Mastered</span><span>Last activity</span><span>Account</span></div>{students.length ? students.map((student) => { const summary = studentSummary(student); const deleting = deletingStudentId === student.profile.studentId; return <article key={student.profile.studentId} className={student.profile.studentId === profile.studentId ? 'selected' : ''} role="button" tabIndex={0} onClick={() => setSelectedStudentId(student.profile.studentId)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedStudentId(student.profile.studentId) }}><div><b>{student.profile.displayName}</b><small>{student.profile.wordcodeId}</small></div><strong>{summary.courseProgress}%</strong><strong>{summary.mastered}</strong><em>{summary.inactiveDays === 0 ? 'Today' : `${summary.inactiveDays} days ago`}</em><button type="button" className="teacher-delete" disabled={deleting} onClick={(event) => { event.stopPropagation(); void deleteStudent(student) }} aria-label={`Delete ${student.profile.displayName}'s account`}><Trash2 size={14} />{deleting ? 'Deleting…' : 'Delete'}</button></article> }) : <div className="mini-empty"><UserRound /><span>No students have joined this group yet.</span></div>}</div>
       </section>
       <section className="teacher-data-card reward-state-card"><header><div><p className="kicker">SPIRIT SIGNAL</p><h2>Reward state</h2></div><RadioTower /></header><div><span><strong>Level {level}</strong>{stage.name}</span><span><strong>{reward.stability}%</strong>Stability</span><span><strong>{reward.lifetimeEnergy}</strong>Energy</span><span><strong>{reward.activeDays.length}</strong>Active days</span></div></section>
     </div>
