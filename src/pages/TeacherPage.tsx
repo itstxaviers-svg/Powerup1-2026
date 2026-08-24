@@ -2,7 +2,7 @@ import { Activity, AlertTriangle, BookOpenCheck, CheckCircle2, Database, FileJso
 import { useEffect, useMemo, useState } from 'react'
 import { grammarPoints, lexicalItems, units } from '../content/course'
 import { getProgress, getRewardState, getStudentProfile, getTrainingSessions } from '../data/db'
-import { daysSince, defaultRewardState, rewardLevel, spiritStageForLevel, type RewardState, type TrainingSessionRecord } from '../domain/rewards'
+import { daysSince, defaultRewardState, rewardLevel, spiritStageForLevel, type RewardState } from '../domain/rewards'
 import { defaultStudentProfile, type StudentProfile } from '../domain/account'
 import type { TargetProgress } from '../domain/types'
 import { cloudSyncEnabled, deleteTeacherStudentCloud, getTeacherDashboardCloud, type TeacherDashboardSnapshot, type TeacherStudentSnapshot } from '../data/cloudSync'
@@ -41,9 +41,20 @@ export function TeacherPage() {
   const profile: StudentProfile = selectedStudent?.profile ?? defaultStudentProfile
   const progress: TargetProgress[] = selectedStudent?.progress ?? []
   const reward: RewardState = selectedStudent?.reward ?? defaultRewardState
-  const sessions: TrainingSessionRecord[] = selectedStudent?.sessions ?? []
   const stable = progress.filter((item) => item.state === 'stable' || item.state === 'mastered')
-  const difficult = useMemo(() => [...progress].filter((item) => item.state === 'unstable' || item.attempts - item.correct >= 2).sort((a, b) => (b.attempts - b.correct) - (a.attempts - a.correct)).slice(0, 5), [progress])
+  const frequentWordErrors = useMemo(() => [...progress]
+    .filter((item) => lexicalItems.some((lexical) => lexical.id === item.targetId) && item.attempts - item.correct > 0)
+    .sort((a, b) => (b.attempts - b.correct) - (a.attempts - a.correct))
+    .slice(0, 5), [progress])
+  const studiedUnits = useMemo(() => units.map((unit) => {
+    const targets = progress.filter((item) => item.attempts > 0 && (lexicalItems.some((lexical) => lexical.id === item.targetId && lexical.unitId === unit.id) || grammarPoints.some((grammar) => grammar.id === item.targetId && grammar.unitId === unit.id)))
+    return { unit, targets, independent: targets.reduce((total, item) => total + item.independentCorrect, 0) }
+  }).filter((item) => item.targets.length > 0), [progress])
+  const activityDays = useMemo(() => [...new Set([...reward.activeDays, ...progress.flatMap((item) => item.sessionDays)])].sort(), [progress, reward.activeDays])
+  const activeDaysLastWeek = useMemo(() => {
+    const weekAgo = Date.now() - 6 * 24 * 60 * 60 * 1000
+    return activityDays.filter((day) => new Date(`${day}T12:00:00`).getTime() >= weekAgo).length
+  }, [activityDays])
   const level = rewardLevel(reward.lifetimeEnergy)
   const stage = spiritStageForLevel(level)
   const studentSummary = (student: TeacherStudentSnapshot) => {
@@ -104,8 +115,11 @@ export function TeacherPage() {
       <section className="teacher-data-card reward-state-card"><header><div><p className="kicker">SPIRIT SIGNAL</p><h2>Reward state</h2></div><RadioTower /></header><div><span><strong>Level {level}</strong>{stage.name}</span><span><strong>{reward.stability}%</strong>Stability</span><span><strong>{reward.lifetimeEnergy}</strong>Energy</span><span><strong>{reward.activeDays.length}</strong>Active days</span></div></section>
     </div>
     <div className="teacher-dashboard-grid">
-      <section className="teacher-data-card"><header><div><p className="kicker">PROBLEM WORDS</p><h2>Most difficult</h2></div><AlertTriangle /></header>{difficult.length ? <div className="problem-list">{difficult.map((item, index) => <article key={item.targetId}><b>{index + 1}</b><span><strong>{targetName(item.targetId)}</strong><small>{item.attempts - item.correct} errors · {item.mastery}% mastery</small></span><em>{item.state}</em></article>)}</div> : <div className="mini-empty"><CheckCircle2 /><span>No difficult codes yet.</span></div>}</section>
-      <section className="teacher-data-card"><header><div><p className="kicker">ACTIVITY</p><h2>Recent sessions</h2></div><Activity /></header>{sessions.length ? <div className="activity-list">{sessions.slice(0, 5).map((session) => <article key={session.id}><span>{new Date(session.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span><strong>{session.correctCount} / {session.challengeCount}</strong><em>+{session.energyEarned} energy</em></article>)}</div> : <div className="mini-empty"><Activity /><span>No completed sessions yet.</span></div>}</section>
+      <section className="teacher-data-card"><header><div><p className="kicker">SELECTED STUDENT / UNITS</p><h2>{profile.displayName ? `${profile.displayName}'s learning map` : 'Learning map'}</h2></div><BookOpenCheck /></header>{studiedUnits.length ? <div className="student-unit-list">{studiedUnits.map(({ unit, targets, independent }) => <article key={unit.id}><span>{unit.order}</span><div><strong>{unit.title}</strong><small>{targets.length} targets practised · {independent} independent decodes</small></div><em>{targets.filter((item) => item.state === 'mastered').length} mastered</em></article>)}</div> : <div className="mini-empty"><BookOpenCheck /><span>No unit activity has been recorded yet.</span></div>}</section>
+      <section className="teacher-data-card practice-frequency-card"><header><div><p className="kicker">ACTIVITY FREQUENCY</p><h2>Study rhythm</h2></div><Activity /></header><div><span><strong>{activeDaysLastWeek}</strong>active days in the last 7 days</span><span><strong>{activityDays.length}</strong>active days recorded in total</span><span><strong>{activityDays.at(-1) ? new Date(`${activityDays.at(-1)}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</strong>last recorded activity</span></div></section>
+    </div>
+    <div className="teacher-dashboard-grid">
+      <section className="teacher-data-card"><header><div><p className="kicker">FREQUENT WORD ERRORS</p><h2>Words to review</h2></div><AlertTriangle /></header>{frequentWordErrors.length ? <div className="problem-list">{frequentWordErrors.map((item, index) => <article key={item.targetId}><b>{index + 1}</b><span><strong>{targetName(item.targetId)}</strong><small>{item.attempts - item.correct} errors · {item.mastery}% mastery</small></span><em>{item.state}</em></article>)}</div> : <div className="mini-empty"><CheckCircle2 /><span>No word errors have been recorded yet.</span></div>}</section>
     </div>
     <section className="library-health"><div className="section-head"><div><p className="kicker">CONTENT & DATA</p><h2>System health</h2></div></div>
       <div className="health-row"><article><strong>{units.filter((unit) => unit.status === 'active').length}</strong><span>playable units</span></article><article><strong>{lexicalItems.length}</strong><span>lexical targets</span></article><article><strong>{signatures}+</strong><span>grammar signatures</span></article></div>
