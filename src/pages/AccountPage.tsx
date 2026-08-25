@@ -1,16 +1,17 @@
-import { Check, Copy, Edit3, KeyRound, LockKeyhole, ShieldCheck, UserRound } from 'lucide-react'
+import { Check, Copy, Edit3, KeyRound, LockKeyhole, LogOut, ShieldCheck, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { rewardsAssets, type SpiritAssetKey } from '../config/rewardsAssets'
 import { getRewardState, getStudentProfile, saveStudentPin, saveStudentProfile } from '../data/db'
 import { defaultStudentProfile, type StudentProfile } from '../domain/account'
 import { defaultRewardState, rewardLevel, spiritStages, type RewardState } from '../domain/rewards'
 import { changeStudentPinCloud, cloudSyncEnabled } from '../data/cloudSync'
-import { getCloudSession } from '../data/cloudSession'
+import { clearCloudSession, getCloudSession } from '../data/cloudSession'
 
 const avatarKeys: SpiritAssetKey[] = ['spark', 'sprite', 'spirit', 'guardian', 'master']
 
 export function AccountPage() {
+  const navigate = useNavigate()
   const [profile, setProfile] = useState<StudentProfile>(defaultStudentProfile)
   const [name, setName] = useState(defaultStudentProfile.displayName)
   const [editingName, setEditingName] = useState(false)
@@ -39,6 +40,12 @@ export function AccountPage() {
       if (cloudSyncEnabled && getCloudSession()) await changeStudentPinCloud(pin)
       await saveStudentPin(pin); setPin(''); setRepeatPin(''); setMessage('PIN changed safely.')
     } catch (error) { setMessage(error instanceof Error ? error.message : 'PIN could not be changed.') }
+  }
+  const logOut = () => {
+    clearCloudSession()
+    localStorage.removeItem('word-code:session')
+    sessionStorage.removeItem('word-code:session')
+    navigate('/login', { replace: true })
   }
 
   return <div className="page account-page">
@@ -70,7 +77,7 @@ export function AccountPage() {
       <p>Your PIN is converted to a secure hash. The six digits are never saved as readable text.</p>
       <div className="pin-fields"><label>NEW 6-DIGIT PIN<input inputMode="numeric" type="password" maxLength={6} value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, ''))} autoComplete="new-password" /></label><label>REPEAT PIN<input inputMode="numeric" type="password" maxLength={6} value={repeatPin} onChange={(event) => setRepeatPin(event.target.value.replace(/\D/g, ''))} autoComplete="new-password" /></label><button onClick={changePin}>Change PIN</button></div>
       {message && <div className="account-message" role="status">{message}</div>}
-      <p className="account-auth-links"><Link to="/login">Student login</Link><Link to="/register">Register another profile</Link></p>
+      <div className="account-auth-links"><Link to="/register">Register another profile</Link><button type="button" className="account-logout" onClick={logOut}><LogOut />Log out</button></div>
     </section>
   </div>
 }
