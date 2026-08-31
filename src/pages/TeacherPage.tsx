@@ -1,11 +1,11 @@
-import { Activity, AlertTriangle, BookOpenCheck, CheckCircle2, Database, FileJson, GraduationCap, LibraryBig, ShieldCheck, Trash2, UserRound, UsersRound } from 'lucide-react'
+import { Activity, AlertTriangle, BookOpenCheck, CheckCircle2, Copy, Database, FileJson, GraduationCap, KeyRound, LibraryBig, ShieldCheck, Trash2, UserRound, UsersRound, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { grammarPoints, lexicalItems, units } from '../content/course'
 import { getProgress, getRewardState, getStudentProfile, getTrainingSessions } from '../data/db'
 import { daysSince, defaultRewardState, type RewardState } from '../domain/rewards'
 import { defaultStudentProfile, type StudentProfile } from '../domain/account'
 import type { TargetProgress } from '../domain/types'
-import { cloudSyncEnabled, deleteTeacherStudentCloud, getTeacherDashboardCloud, type TeacherDashboardSnapshot, type TeacherStudentSnapshot } from '../data/cloudSync'
+import { cloudSyncEnabled, deleteTeacherStudentCloud, getTeacherDashboardCloud, resetTeacherStudentPinCloud, type TeacherDashboardSnapshot, type TeacherStudentSnapshot } from '../data/cloudSync'
 import { getCloudSession } from '../data/cloudSession'
 
 function startOfToday() {
@@ -33,6 +33,8 @@ export function TeacherPage() {
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [deletingStudentId, setDeletingStudentId] = useState('')
+  const [resettingStudentId, setResettingStudentId] = useState('')
+  const [temporaryPin, setTemporaryPin] = useState<{ displayName: string; wordcodeId: string; pin: string } | null>(null)
   useEffect(() => {
     const session = getCloudSession()
     if (cloudSyncEnabled && session?.role === 'teacher') {
@@ -109,6 +111,23 @@ export function TeacherPage() {
       window.alert(error instanceof Error ? error.message : 'The account could not be deleted. Please try again.')
     } finally { setDeletingStudentId('') }
   }
+  const resetStudentPin = async (student: TeacherStudentSnapshot) => {
+    const name = student.profile.displayName
+    const confirmed = window.confirm(`Reset ${name}'s PIN? Their account and learning progress will stay unchanged.`)
+    if (!confirmed) return
+    setResettingStudentId(student.profile.studentId)
+    try {
+      const result = await resetTeacherStudentPinCloud(student.profile.wordcodeId)
+      setTemporaryPin({ displayName: name, wordcodeId: result.wordcodeId, pin: result.temporaryPin })
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'The PIN could not be reset. Please try again.')
+    } finally { setResettingStudentId('') }
+  }
+  const copyTemporaryPin = async () => {
+    if (!temporaryPin) return
+    try { await navigator.clipboard.writeText(temporaryPin.pin) }
+    catch { window.prompt('Copy the temporary PIN:', temporaryPin.pin) }
+  }
   const signatures = grammarPoints.reduce((total, item) => total + item.examplePool.length * item.allowedTaskTypes.length, 0)
   const targetName = (targetId: string) => lexicalItems.find((item) => item.id === targetId)?.text ?? grammarPoints.find((item) => item.id === targetId)?.title ?? targetId
   const exportBuiltIn = () => {
@@ -130,7 +149,8 @@ export function TeacherPage() {
     <div className="teacher-dashboard-grid">
       <section className="teacher-data-card students-card"><header><div><p className="kicker">STUDENTS</p><h2>Student overview</h2></div><span>GROUP: {group.joinCode || '—'} · <button type="button" className="teacher-refresh" onClick={() => { void refreshStudents() }} disabled={isRefreshing}>{isRefreshing ? 'Updating…' : 'Refresh'}</button></span></header>
         <div className="registration-summary"><span><strong>{registrationCounts.today}</strong>joined today</span><span><strong>{registrationCounts.yesterday}</strong>joined yesterday</span><span><strong>{registrationCounts.twoDaysAgo}</strong>joined 2 days ago</span></div>
-        <div className="teacher-table"><div className="teacher-table-head"><span>Student</span><span>Joined</span><span>Words to review</span><span>Last activity</span><span>Account</span></div>{students.length ? students.map((student) => { const summary = studentSummary(student); const deleting = deletingStudentId === student.profile.studentId; const wordErrors = wordErrorsFor(student.progress).slice(0, 3); const hasWordPractice = student.progress.some((item) => lexicalItems.some((lexical) => lexical.id === item.targetId) && item.attempts > 0); return <article key={student.profile.studentId} className={student.profile.studentId === profile.studentId ? 'selected' : ''} role="button" tabIndex={0} onClick={() => setSelectedStudentId(student.profile.studentId)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedStudentId(student.profile.studentId) }}><div><b>{student.profile.displayName}</b><small>{student.profile.wordcodeId}</small></div><time>{formatRegistrationDate(student.profile.createdAt)}</time><div className="teacher-word-errors">{wordErrors.length ? wordErrors.map((item) => <span key={item.targetId}>{targetName(item.targetId)} · {item.attempts - item.correct}</span>) : <small>{hasWordPractice ? 'No word errors' : 'No word practice yet'}</small>}</div><em>{summary.inactiveDays === 0 ? 'Today' : `${summary.inactiveDays} days ago`}</em><button type="button" className="teacher-delete" disabled={deleting} onClick={(event) => { event.stopPropagation(); void deleteStudent(student) }} aria-label={`Delete ${student.profile.displayName}'s account`}><Trash2 size={14} />{deleting ? 'Deleting…' : 'Delete'}</button></article> }) : <div className="mini-empty"><UserRound /><span>No students have joined this group yet.</span></div>}</div>
+        {temporaryPin && <div className="teacher-pin-result" role="status"><KeyRound /><div><strong>New PIN for {temporaryPin.displayName}</strong><span>{temporaryPin.wordcodeId} · Give this PIN to the student.</span></div><code>{temporaryPin.pin}</code><button type="button" onClick={() => { void copyTemporaryPin() }}><Copy size={15} /> Copy PIN</button><button type="button" className="teacher-pin-close" onClick={() => setTemporaryPin(null)} aria-label="Close temporary PIN"><X size={16} /></button></div>}
+        <div className="teacher-table"><div className="teacher-table-head"><span>Student</span><span>Joined</span><span>Words to review</span><span>Last activity</span><span>Account</span></div>{students.length ? students.map((student) => { const summary = studentSummary(student); const deleting = deletingStudentId === student.profile.studentId; const resetting = resettingStudentId === student.profile.studentId; const wordErrors = wordErrorsFor(student.progress).slice(0, 3); const hasWordPractice = student.progress.some((item) => lexicalItems.some((lexical) => lexical.id === item.targetId) && item.attempts > 0); return <article key={student.profile.studentId} className={student.profile.studentId === profile.studentId ? 'selected' : ''} role="button" tabIndex={0} onClick={() => setSelectedStudentId(student.profile.studentId)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedStudentId(student.profile.studentId) }}><div><b>{student.profile.displayName}</b><small>{student.profile.wordcodeId}</small></div><time>{formatRegistrationDate(student.profile.createdAt)}</time><div className="teacher-word-errors">{wordErrors.length ? wordErrors.map((item) => <span key={item.targetId}>{targetName(item.targetId)} · {item.attempts - item.correct}</span>) : <small>{hasWordPractice ? 'No word errors' : 'No word practice yet'}</small>}</div><em>{summary.inactiveDays === 0 ? 'Today' : `${summary.inactiveDays} days ago`}</em><div className="teacher-account-actions"><button type="button" className="teacher-reset-pin" disabled={resetting || deleting} onClick={(event) => { event.stopPropagation(); void resetStudentPin(student) }} aria-label={`Reset ${student.profile.displayName}'s PIN`}><KeyRound size={14} />{resetting ? 'Resetting…' : 'Reset PIN'}</button><button type="button" className="teacher-delete" disabled={deleting || resetting} onClick={(event) => { event.stopPropagation(); void deleteStudent(student) }} aria-label={`Delete ${student.profile.displayName}'s account`}><Trash2 size={14} />{deleting ? 'Deleting…' : 'Delete'}</button></div></article> }) : <div className="mini-empty"><UserRound /><span>No students have joined this group yet.</span></div>}</div>
       </section>
     </div>
     <div className="teacher-dashboard-grid">

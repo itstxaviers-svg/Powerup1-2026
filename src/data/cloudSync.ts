@@ -72,6 +72,10 @@ export async function deleteTeacherStudentCloud(wordcodeId: string) {
   return apiRequest<{ ok: true; wordcodeId: string }>('/teacher/students/delete', { method: 'POST', body: JSON.stringify({ wordcodeId }) }, true)
 }
 
+export async function resetTeacherStudentPinCloud(wordcodeId: string) {
+  return apiRequest<{ ok: true; wordcodeId: string; temporaryPin: string }>('/teacher/students/reset-pin', { method: 'POST', body: JSON.stringify({ wordcodeId }) }, true)
+}
+
 export async function flushCloudSync() {
   if (!cloudSyncEnabled || !navigator.onLine || !getCloudSession() || flushPromise) return flushPromise ?? Promise.resolve()
   flushPromise = (async () => {

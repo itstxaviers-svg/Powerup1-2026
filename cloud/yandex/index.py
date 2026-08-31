@@ -437,6 +437,30 @@ def _delete_teacher_student(event, data):
     return _response(200, {"ok": True, "wordcodeId": wordcode_id})
 
 
+def _reset_teacher_student_pin(event, data):
+    identity = _authenticate(event, "teacher")
+    wordcode_id = str(data.get("wordcodeId", "")).strip().upper()[:32]
+    if not identity:
+        return _response(401, {"message": "Teacher login required."})
+    if not wordcode_id:
+        return _response(400, {"message": "Student ID is required."})
+    groups = _rows(_query("""
+        DECLARE $join_code AS Utf8;
+        SELECT group_id FROM groups WHERE join_code = $join_code;
+    """, join_code=identity.get("joinCode", "")))
+    if not groups:
+        return _response(404, {"message": "Teacher group not found."})
+    student = _find_student(wordcode_id)
+    if not student or _value(student, "group_id") != _value(groups[0], "group_id"):
+        return _response(404, {"message": "Student not found in this group."})
+    temporary_pin = f"{secrets.randbelow(1_000_000):06d}"
+    _query("""
+        DECLARE $wordcode_id AS Utf8; DECLARE $pin_hash AS Utf8; DECLARE $now AS Timestamp;
+        UPDATE students SET pin_hash = $pin_hash, updated_at = $now WHERE wordcode_id = $wordcode_id;
+    """, wordcode_id=wordcode_id, pin_hash=_hash_secret(temporary_pin), now=_utcnow())
+    return _response(200, {"ok": True, "wordcodeId": wordcode_id, "temporaryPin": temporary_pin})
+
+
 def handler(event, context):
     del context
     try:
@@ -457,6 +481,8 @@ def handler(event, context):
             return _teacher_dashboard(event)
         if method == "POST" and path == "/teacher/students/delete":
             return _delete_teacher_student(event, data)
+        if method == "POST" and path == "/teacher/students/reset-pin":
+            return _reset_teacher_student_pin(event, data)
         if method == "POST" and path == "/sync/events":
             return _sync_events(event, data)
         if method == "POST" and path == "/setup/teacher":

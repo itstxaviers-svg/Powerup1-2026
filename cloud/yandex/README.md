@@ -55,3 +55,5 @@ The app writes every answer locally first. It then sends queued events in batche
 The teacher dashboard reads every student in the teacher's group. Select a student in the list to inspect that learner's detailed progress and rewards.
 
 Deleting a student from the teacher dashboard permanently removes that student's cloud account, progress, rewards and session history. A deleted student's existing browser session is rejected at its next sync.
+
+Resetting a student PIN creates a new six-digit PIN without changing the student's account or learning progress. The teacher dashboard displays the new PIN so the teacher can pass it to the student.
