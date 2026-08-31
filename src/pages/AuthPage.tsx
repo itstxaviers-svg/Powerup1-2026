@@ -20,6 +20,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const [busy, setBusy] = useState(false)
   const messageRef = useRef<HTMLDivElement>(null)
   const cleanPin = (value: string) => value.replace(/\D/g, '').slice(0, 6)
+  const registrationPinReady = /^\d{6}$/.test(pin) && repeatPin === pin
 
   useEffect(() => {
     if (message) messageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -77,9 +78,9 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         <label>Your name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Sasha" autoComplete="nickname" /></label>
         <label>Your group<input value={joinCode} onChange={(event) => setJoinCode(event.target.value)} placeholder={cloudSyncEnabled ? 'Enter group code' : 'PU1-DEMO'} autoCapitalize="characters" /><small>{cloudSyncEnabled ? 'Enter the Join Code exactly as your teacher gave it to you.' : 'Enter the Join Code exactly as your teacher gave it to you. Demo code: PU1-DEMO'}</small></label>
         <fieldset className="starter-avatar"><legend>Starter Avatar</legend><div><button type="button" className="selected" aria-label="Spark starter avatar"><img src={rewardsAssets.spirit.spark} alt="Spark" /><CheckCircle2 /></button><p>New Code Spirit forms unlock as you learn and reach new levels.</p></div></fieldset>
-        <label>Create your PIN<input value={pin} onChange={(event) => setPin(cleanPin(event.target.value))} inputMode="numeric" type="password" maxLength={6} autoComplete="new-password" placeholder="••••••" /></label>
-        <label>Repeat PIN<input value={repeatPin} onChange={(event) => setRepeatPin(cleanPin(event.target.value))} inputMode="numeric" type="password" maxLength={6} autoComplete="new-password" placeholder="••••••" /></label>
-        <button type="button" className="auth-submit" onClick={() => void register()} disabled={busy}>{busy ? 'Creating… Please wait' : 'Create my ID'} <ArrowRight /></button><p className="auth-switch">Already registered? <Link to="/login">Student login</Link></p>
+        <label>Create your PIN<input value={pin} onChange={(event) => setPin(cleanPin(event.target.value))} inputMode="numeric" type="password" minLength={6} maxLength={6} pattern="[0-9]{6}" required autoComplete="new-password" placeholder="••••••" /><small>Exactly 6 digits · {pin.length}/6</small></label>
+        <label>Repeat PIN<input value={repeatPin} onChange={(event) => setRepeatPin(cleanPin(event.target.value))} inputMode="numeric" type="password" minLength={6} maxLength={6} pattern="[0-9]{6}" required autoComplete="new-password" placeholder="••••••" /><small>{repeatPin.length === 6 && repeatPin === pin ? 'PINs match.' : 'Enter the same 6-digit PIN.'}</small></label>
+        <button type="button" className="auth-submit" onClick={() => void register()} disabled={busy || !registrationPinReady}>{busy ? 'Creating… Please wait' : 'Create my ID'} <ArrowRight /></button><p className="auth-switch">Already registered? <Link to="/login">Student login</Link></p>
       </> : <>
         <label>WORD//CODE ID<input value={wordcodeId} onChange={(event) => setWordcodeId(event.target.value)} placeholder="SASHA-482" autoCapitalize="characters" /></label>
         <label>PIN<input value={pin} onChange={(event) => setPin(cleanPin(event.target.value))} inputMode="numeric" type="password" maxLength={6} autoComplete="current-password" placeholder="••••••" /></label>
