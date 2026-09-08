@@ -8,6 +8,7 @@ import { completeTrainingSession, getProgress, getRecentSignatures, recordAttemp
 import { loadSettings } from '../data/settings'
 import { checkAnswer } from '../domain/checkAnswer'
 import { generateRemediation, generateSession } from '../domain/generator'
+import { sanitiseLearningInput } from '../domain/learningInput'
 import type { AttemptResult, Task, UnitId } from '../domain/types'
 
 const taskTypes = ['memory', 'repair', 'unscramble', 'error-hunt', 'audio', 'final-decode', 'sentence-build', 'dialogue-gap', 'punctuation'] as const
@@ -39,6 +40,8 @@ export function TrainingPage() {
   const [usedTiles, setUsedTiles] = useState<number[]>([])
   const [energyEarned, setEnergyEarned] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const composingRef = useRef(false)
+  const focusTimerRef = useRef<number | null>(null)
   const reduceMotion = useReducedMotion()
   const task = tasks[index]
 
@@ -55,15 +58,20 @@ export function TrainingPage() {
     if (task.type === 'memory') { const timer = window.setTimeout(() => { setShowExposure(false); inputRef.current?.focus() }, settings.memoryDuration); return () => window.clearTimeout(timer) }
     setShowExposure(false)
   }, [task, settings.memoryDuration])
+  useEffect(() => () => {
+    if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current)
+  }, [])
 
   if (!task) return <div className="page training-page"><div className="loading-card">Calibrating signals…</div></div>
 
   const isExposure = task.type === 'memory' && showExposure
   const canSpeak = settings.audioEnabled && 'speechSynthesis' in window
   const submit = () => {
-    if (!input.trim()) return
+    const submittedInput = sanitiseLearningInput(input)
+    if (!submittedInput.trim()) return
+    if (submittedInput !== input) setInput(submittedInput)
     const lexical = lexicalItems.find((item) => item.id === task.targetId)
-    const checked = checkAnswer(task, input, lexical)
+    const checked = checkAnswer(task, submittedInput, lexical)
     setResult(checked); setAttempts((value) => value + 1); setEnergyEarned((value) => value + (checked.correct ? attempts === 0 && checked.courseMastery ? 14 : 9 : 3))
     if (checked.correct) { setCorrectCount((value) => value + 1); recordAttempt(task.targetId, task.type, true, attempts === 0 && checked.courseMastery) }
     else {
@@ -83,6 +91,18 @@ export function TrainingPage() {
     else setIndex((value) => value + 1)
   }
   const hint = () => { setAttempts((value) => value + 1); setRevealed(true); setResult({ correct: false, courseMastery: false, feedback: `Signal hint: ${task.answer.split('').map((char, i) => i % 2 ? '_' : char).join(' ')}` }) }
+  const updateTypedInput = (value: string) => {
+    setInput(sanitiseLearningInput(value))
+    setUsedTiles((current) => current.length ? [] : current)
+    if (result && !result.correct) setResult(null)
+  }
+  const bringInputIntoView = (element: HTMLInputElement) => {
+    if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current)
+    const isTouchKeyboard = window.matchMedia('(pointer: coarse)').matches
+    focusTimerRef.current = window.setTimeout(() => {
+      element.scrollIntoView({ block: 'center', behavior: isTouchKeyboard || reduceMotion ? 'auto' : 'smooth' })
+    }, isTouchKeyboard ? 120 : 250)
+  }
   const addTile = (tile: string, tileIndex: number) => {
     if (result?.correct || usedTiles.includes(tileIndex)) return
     setUsedTiles((value) => [...value, tileIndex])
@@ -91,7 +111,7 @@ export function TrainingPage() {
       if (/^[,.!?]$/.test(tile)) return `${value.trimEnd()}${tile}`
       return value ? `${value} ${tile}` : tile
     })
-    inputRef.current?.focus()
+    if (!window.matchMedia('(pointer: coarse)').matches) inputRef.current?.focus()
   }
 
   return <div className="training-page">
@@ -109,7 +129,7 @@ export function TrainingPage() {
             <form onSubmit={(event) => { event.preventDefault(); result?.correct ? next() : submit() }}>
               <label htmlFor="decode-input">YOUR DECODE</label>
               <div className={`answer-row ${result ? result.correct ? 'correct' : 'incorrect' : ''}`}>
-                <input ref={inputRef} id="decode-input" value={input} onFocus={(event) => window.setTimeout(() => event.currentTarget.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' }), 250)} onChange={(event) => { setInput(event.target.value); setUsedTiles([]); if (result && !result.correct) setResult(null) }} placeholder={task.tiles ? 'Or type your answer…' : 'Type here…'} autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} disabled={result?.correct} />
+                <input ref={inputRef} id="decode-input" value={input} onFocus={(event) => bringInputIntoView(event.currentTarget)} onCompositionStart={() => { composingRef.current = true }} onCompositionEnd={(event) => { composingRef.current = false; updateTypedInput(event.currentTarget.value) }} onChange={(event) => { if (composingRef.current) setInput(event.target.value); else updateTypedInput(event.target.value) }} placeholder={task.tiles ? 'Or type your answer…' : 'Type here…'} lang="en-GB" inputMode="text" enterKeyHint="done" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" disabled={result?.correct} />
                 {input && !result?.correct && <button type="button" className="clear-input" onClick={() => { setInput(''); setUsedTiles([]) }} aria-label="Clear answer">×</button>}
                 {result?.correct && <Check aria-hidden="true" />}
               </div>
