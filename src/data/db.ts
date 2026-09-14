@@ -1,8 +1,11 @@
 import { openDB, type DBSchema } from 'idb'
-import type { TargetProgress } from '../domain/types'
+import { taskTypes, type TargetProgress } from '../domain/types'
+import { currentTaskTypes, hasMasteryVariety } from '../domain/mastery'
 import { defaultRewardState, effectiveStability, rewardLevel, accessoryDefinitions, type RewardState, type TrainingSessionRecord } from '../domain/rewards'
 import { defaultStudentProfile, type StudentAccountSecret, type StudentProfile } from '../domain/account'
 import type { SyncEvent, SyncEventPayload, SyncEventType } from '../domain/sync'
+import type { BattleCheckpointId, BattleProgressRecord } from '../features/battle/types'
+import { normaliseBattleProgress } from '../features/battle/engine'
 
 interface WordCodeDB extends DBSchema {
   progress: { key: string; value: TargetProgress }
@@ -13,9 +16,10 @@ interface WordCodeDB extends DBSchema {
   studentProfile: { key: string; value: StudentProfile }
   studentAccount: { key: string; value: StudentAccountSecret }
   syncQueue: { key: string; value: SyncEvent }
+  battleProgress: { key: BattleCheckpointId; value: BattleProgressRecord }
 }
 
-const dbPromise = typeof indexedDB === 'undefined' ? null : openDB<WordCodeDB>('word-code', 4, {
+const dbPromise = typeof indexedDB === 'undefined' ? null : openDB<WordCodeDB>('word-code', 5, {
   upgrade(db) {
     if (!db.objectStoreNames.contains('progress')) db.createObjectStore('progress', { keyPath: 'targetId' })
     if (!db.objectStoreNames.contains('taskHistory')) db.createObjectStore('taskHistory', { keyPath: 'signature' })
@@ -25,6 +29,7 @@ const dbPromise = typeof indexedDB === 'undefined' ? null : openDB<WordCodeDB>('
     if (!db.objectStoreNames.contains('studentProfile')) db.createObjectStore('studentProfile', { keyPath: 'id' })
     if (!db.objectStoreNames.contains('studentAccount')) db.createObjectStore('studentAccount', { keyPath: 'id' })
     if (!db.objectStoreNames.contains('syncQueue')) db.createObjectStore('syncQueue', { keyPath: 'id' })
+    if (!db.objectStoreNames.contains('battleProgress')) db.createObjectStore('battleProgress', { keyPath: 'id' })
   },
 })
 
@@ -80,7 +85,41 @@ export async function delaySyncEvents(ids: string[], message: string) {
   await transaction.done
 }
 
-export async function getProgress() { return (await dbPromise)?.getAll('progress') ?? [] }
+function normaliseProgress(value: TargetProgress): TargetProgress {
+  return {
+    ...value,
+    mastery: Number.isFinite(value.mastery) ? Math.max(0, Math.min(100, value.mastery)) : 0,
+    attempts: Number.isFinite(value.attempts) ? Math.max(0, value.attempts) : 0,
+    correct: Number.isFinite(value.correct) ? Math.max(0, value.correct) : 0,
+    independentCorrect: Number.isFinite(value.independentCorrect) ? Math.max(0, value.independentCorrect) : 0,
+    taskTypesSeen: currentTaskTypes(value.taskTypesSeen ?? []),
+    sessionDays: Array.isArray(value.sessionDays) ? value.sessionDays.filter((day): day is string => typeof day === 'string') : [],
+  }
+}
+
+export async function getProgress() {
+  if (!dbPromise) return []
+  const db = await dbPromise
+  const values = await db.getAll('progress')
+  const normalised = values.map(normaliseProgress)
+  await Promise.all(normalised.filter((value, index) => JSON.stringify(value) !== JSON.stringify(values[index])).map((value) => db.put('progress', value)))
+  return normalised
+}
+
+export async function getBattleProgress(id: BattleCheckpointId) {
+  const value = await (await dbPromise)?.get('battleProgress', id)
+  return value ? normaliseBattleProgress(value) : undefined
+}
+
+export async function getAllBattleProgress() {
+  if (!dbPromise) return []
+  const values = await (await dbPromise).getAll('battleProgress')
+  return values.map(normaliseBattleProgress)
+}
+
+export async function saveBattleProgress(record: BattleProgressRecord) {
+  if (dbPromise) await (await dbPromise).put('battleProgress', record)
+}
 
 export async function getRecentSignatures(limit = 80) {
   if (!dbPromise) return []
@@ -89,15 +128,15 @@ export async function getRecentSignatures(limit = 80) {
 }
 
 const masteryWeights: Record<TargetProgress['taskTypesSeen'][number], number> = {
-  repair: .5,
-  unscramble: .7,
-  'error-hunt': .8,
-  memory: 1.1,
-  audio: 1.3,
-  'final-decode': 1.5,
-  'sentence-build': 1,
-  'dialogue-gap': 1.2,
-  punctuation: 1.1,
+  repair: .45,
+  unscramble: .75,
+  'error-hunt': .85,
+  memory: 1.15,
+  audio: 1.4,
+}
+
+function currentModeCounts(counts: RewardState['modeCounts']) {
+  return Object.fromEntries(taskTypes.flatMap((type) => counts[type] ? [[type, counts[type]]] : [])) as RewardState['modeCounts']
 }
 
 export async function recordAttempt(targetId: string, taskType: TargetProgress['taskTypesSeen'][number], correct: boolean, independent: boolean) {
@@ -109,13 +148,12 @@ export async function recordAttempt(targetId: string, taskType: TargetProgress['
   const score = Math.min(100, (current?.mastery ?? 0) + gain)
   const attempts = (current?.attempts ?? 0) + 1
   const correctCount = (current?.correct ?? 0) + Number(correct)
-  const types = Array.from(new Set([...(current?.taskTypesSeen ?? []), taskType]))
+  const types = currentTaskTypes([...(current?.taskTypesSeen ?? []), taskType])
   const days = Array.from(new Set([...(current?.sessionDays ?? []), today]))
-  const wordRecallComplete = ['memory', 'audio', 'final-decode'].every((type) => types.includes(type as TargetProgress['taskTypesSeen'][number]))
-  const isWordProgress = types.some((type) => ['repair', 'unscramble', 'final-decode'].includes(type))
-  const masteryReady = isWordProgress ? wordRecallComplete : types.length >= 3
+  const independentCorrect = (current?.independentCorrect ?? 0) + Number(correct && independent)
+  const masteryReady = hasMasteryVariety(types) && independentCorrect >= 3
   const state: TargetProgress['state'] = !correct && attempts > 1 ? 'unstable' : score >= 88 && masteryReady && days.length >= 2 ? 'mastered' : score >= 65 ? 'stable' : score > 25 ? 'practising' : 'learning'
-  const progress: TargetProgress = { targetId, mastery: score, state, attempts, correct: correctCount, independentCorrect: (current?.independentCorrect ?? 0) + Number(correct && independent), taskTypesSeen: types, sessionDays: days, lastSeenAt: new Date().toISOString() }
+  const progress: TargetProgress = { targetId, mastery: score, state, attempts, correct: correctCount, independentCorrect, taskTypesSeen: types, sessionDays: days, lastSeenAt: new Date().toISOString() }
   await db.put('progress', progress)
   const reward = await db.get('rewardState', 'current') ?? defaultRewardState
   const energyGain = correct ? independent ? 14 : 9 : 3
@@ -127,7 +165,7 @@ export async function recordAttempt(targetId: string, taskType: TargetProgress['
     stability: effectiveStability(reward),
     lastActivityAt: new Date().toISOString(),
     activeDays: Array.from(new Set([...reward.activeDays, today])).slice(-120),
-    modeCounts: { ...reward.modeCounts, [taskType]: (reward.modeCounts[taskType] ?? 0) + 1 },
+    modeCounts: { ...currentModeCounts(reward.modeCounts), [taskType]: (reward.modeCounts[taskType] ?? 0) + 1 },
     unlockedAccessories,
   }
   await db.put('rewardState', nextReward)
@@ -139,7 +177,7 @@ export async function getRewardState() {
   if (!dbPromise) return defaultRewardState
   const db = await dbPromise
   const state = await db.get('rewardState', 'current') ?? defaultRewardState
-  return { ...state, stability: effectiveStability(state) }
+  return { ...state, stability: effectiveStability(state), modeCounts: currentModeCounts(state.modeCounts) }
 }
 
 export async function completeTrainingSession(session: Omit<TrainingSessionRecord, 'id' | 'completedAt'>) {
@@ -216,5 +254,8 @@ export async function rememberSignature(signature: string) {
 }
 
 export async function resetProgress() {
-  if (dbPromise) await (await dbPromise).clear('progress')
+  if (!dbPromise) return
+  const db = await dbPromise
+  const transaction = db.transaction(['progress', 'battleProgress'], 'readwrite')
+  await Promise.all([transaction.objectStore('progress').clear(), transaction.objectStore('battleProgress').clear(), transaction.done])
 }

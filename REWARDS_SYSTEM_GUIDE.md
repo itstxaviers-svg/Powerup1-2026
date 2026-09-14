@@ -114,7 +114,7 @@ Energy начисляется за каждое выполненное зада�
 | Audio Orb | выполнить 3 задания Audio Code |
 | Repair Gear | выполнить 3 задания Repair |
 | Decoder Lens | выполнить 3 задания Error Hunt |
-| Sentence Core | выполнить 3 задания Sentence Build |
+| Order Core | выполнить 3 задания Unscramble |
 | Master Key | воспользоваться 6 разными режимами |
 | Prism Fragment | стабилизировать 25 учебных целей |
 | Ancient Code | получить Mastered хотя бы для одного юнита |

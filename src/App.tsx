@@ -17,6 +17,7 @@ import { TeacherAuthPage } from './pages/TeacherAuthPage'
 import { getCloudSession } from './data/cloudSession'
 import type { ReactNode } from 'react'
 import { cloudSyncEnabled } from './data/cloudSync'
+import { BattlePage } from './pages/BattlePage'
 
 function ProtectedTeacherPage() {
   const session = getCloudSession()
@@ -39,8 +40,9 @@ function ProtectedStudentPage({ children }: { children: ReactNode }) {
 export default function App() {
   if (appRole === 'teacher') return <HashRouter><Routes><Route path="/teacher/login" element={<TeacherAuthPage />} /><Route path="*" element={<ProtectedTeacherPage />} /></Routes></HashRouter>
   return <HashRouter><Routes>
-    <Route path="/train/:unitId/:group/:category" element={<ProtectedStudentPage><TrainingPage /></ProtectedStudentPage>} />
-    <Route path="/train/:unitId/:group/:category/:taskType" element={<ProtectedStudentPage><TrainingPage /></ProtectedStudentPage>} />
+    <Route path="/train/:unitId/:parts/:category" element={<ProtectedStudentPage><TrainingPage /></ProtectedStudentPage>} />
+    <Route path="/train/:unitId/:parts/:category/:taskType" element={<ProtectedStudentPage><TrainingPage /></ProtectedStudentPage>} />
+    <Route path="/battle/:fightId" element={<ProtectedStudentPage><BattlePage /></ProtectedStudentPage>} />
     <Route path="/login" element={<AuthPage mode="login" />} />
     <Route path="/register" element={<AuthPage mode="register" />} />
     <Route path="/teacher/login" element={<TeacherAuthPage />} />

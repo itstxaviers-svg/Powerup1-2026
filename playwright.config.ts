@@ -1,11 +1,11 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
-  webServer: { command: 'npm run dev -- --host 127.0.0.1', url: 'http://127.0.0.1:5173', reuseExistingServer: true },
-  use: { baseURL: 'http://127.0.0.1:5173' },
+  webServer: { command: 'npm run dev -- --port 4174', url: 'http://127.0.0.1:4174', reuseExistingServer: true },
+  use: { baseURL: 'http://127.0.0.1:4174' },
   projects: [
-    { name: 'mobile-chrome', use: { ...devices['Pixel 7'], channel: 'chrome' } },
-    { name: 'desktop', use: { ...devices['Desktop Chrome'], channel: 'chrome' } },
+    { name: 'mobile-chrome', use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, channel: 'chrome' } },
+    { name: 'desktop', use: { viewport: { width: 1440, height: 900 }, channel: 'chrome' } },
   ],
 })

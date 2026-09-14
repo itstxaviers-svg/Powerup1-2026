@@ -281,7 +281,7 @@ WORD KEY
 - **Audio Orb** — за AUDIO CODE;
 - **Repair Gear** — за REPAIR;
 - **Decoder Lens** — за ERROR HUNT;
-- **Sentence Core** — за SENTENCE BUILD;
+- **Order Core** — за UNSCRAMBLE;
 - **Master Key** — за использование всех основных режимов;
 - **Prism Fragment** — за освоение большого количества слов;
 - **Ancient Code** — за Mastered Unit.
@@ -1288,7 +1288,7 @@ artifact-ancient-code.png
 | `artifact-audio-orb.png` | Audio Orb | AUDIO CODE |
 | `artifact-repair-gear.png` | Repair Gear | REPAIR |
 | `artifact-decoder-lens.png` | Decoder Lens | ERROR HUNT |
-| `artifact-sentence-core.png` | Sentence Core | SENTENCE BUILD |
+| `artifact-sentence-core.png` | Order Core | UNSCRAMBLE |
 | `artifact-master-key.png` | Master Key | использование всех основных режимов |
 | `artifact-prism-fragment.png` | Prism Fragment | крупный milestone по словам / mastery |
 | `artifact-ancient-code.png` | Ancient Code | редкая награда за Mastered Unit / высокий milestone |

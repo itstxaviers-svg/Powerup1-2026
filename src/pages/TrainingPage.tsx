@@ -2,31 +2,22 @@ import { ArrowLeft, ArrowRight, Check, Eye, Lightbulb, RotateCcw, Volume2 } from
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { lexicalItems } from '../content/course'
-import { Cue } from '../components/Cue'
+import { lexicalItems, units } from '../content/course'
 import { completeTrainingSession, getProgress, getRecentSignatures, recordAttempt, rememberSignature } from '../data/db'
 import { loadSettings } from '../data/settings'
 import { checkAnswer } from '../domain/checkAnswer'
 import { generateRemediation, generateSession } from '../domain/generator'
 import { sanitiseLearningInput } from '../domain/learningInput'
-import type { AttemptResult, Task, UnitId } from '../domain/types'
-
-const taskTypes = ['memory', 'repair', 'unscramble', 'error-hunt', 'audio', 'final-decode', 'sentence-build', 'dialogue-gap', 'punctuation'] as const
-
-function speak(value: string) {
-  if (!('speechSynthesis' in window)) return
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(value)
-  utterance.lang = 'en-GB'; utterance.rate = .82
-  window.speechSynthesis.speak(utterance)
-}
+import { parsePartRoute } from '../domain/parts'
+import { taskTypes, type AttemptResult, type Task, type UnitId } from '../domain/types'
+import { canSpeakEnglish, speakEnglish } from '../domain/speech'
 
 function ProgressDots({ count, current }: { count: number; current: number }) {
   return <div className="progress-dots" aria-label={`Challenge ${current + 1} of ${count}`}>{Array.from({ length: count }, (_, index) => <i key={index} className={index < current ? 'done' : index === current ? 'current' : ''} />)}</div>
 }
 
 export function TrainingPage() {
-  const { unitId = 'hello', group = 'all', category = 'mixed', taskType } = useParams()
+  const { unitId = 'hello', parts = 'all', category = 'mixed', taskType } = useParams()
   const navigate = useNavigate()
   const settings = useMemo(loadSettings, [])
   const [tasks, setTasks] = useState<Task[]>([])
@@ -40,6 +31,7 @@ export function TrainingPage() {
   const [usedTiles, setUsedTiles] = useState<number[]>([])
   const [energyEarned, setEnergyEarned] = useState(0)
   const [inputFocused, setInputFocused] = useState(false)
+  const [ready, setReady] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const composingRef = useRef(false)
   const focusTimerRef = useRef<number | null>(null)
@@ -47,11 +39,17 @@ export function TrainingPage() {
   const task = tasks[index]
 
   useEffect(() => {
-    const availableTypes = taskTypes.filter((type) => type !== 'audio' || (settings.audioEnabled && 'speechSynthesis' in window))
+    setReady(false)
+    const availableTypes = taskTypes.filter((type) => type !== 'audio' || (settings.audioEnabled && canSpeakEnglish()))
     const selectedType = taskTypes.find((type) => type === taskType)
-    const allowedTypes = selectedType && availableTypes.includes(selectedType) ? [selectedType] : [...availableTypes]
-    Promise.all([getProgress(), getRecentSignatures()]).then(([progress, recentSignatures]) => setTasks(generateSession({ length: settings.sessionLength, progress, recentSignatures, allowedTypes, category: category as 'words' | 'phrases' | 'mixed', unitId: unitId as UnitId, groupId: group, seed: `${Date.now()}` })))
-  }, [category, group, settings.audioEnabled, settings.sessionLength, taskType, unitId])
+    const allowedTypes = selectedType ? availableTypes.includes(selectedType) ? [selectedType] : [] : [...availableTypes]
+    const selectedUnit = units.find((item) => item.id === unitId) ?? units[0]!
+    const selectedPartIds = parsePartRoute(parts, selectedUnit.parts)
+    Promise.all([getProgress(), getRecentSignatures()]).then(([progress, recentSignatures]) => {
+      setTasks(generateSession({ length: settings.sessionLength, progress, recentSignatures, allowedTypes, category: category as 'words' | 'phrases' | 'mixed', unitId: selectedUnit.id, selectedPartIds, seed: `${Date.now()}` }))
+      setReady(true)
+    })
+  }, [category, parts, settings.audioEnabled, settings.sessionLength, taskType, unitId])
   useEffect(() => {
     setInput(''); setResult(null); setAttempts(0); setRevealed(false); setShowExposure(true); setUsedTiles([])
     if (!task) return
@@ -63,10 +61,10 @@ export function TrainingPage() {
     if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current)
   }, [])
 
-  if (!task) return <div className="page training-page"><div className="loading-card">Calibrating signals…</div></div>
+  if (!task) return <div className="page training-page"><div className="loading-card">{ready ? <><strong>No compatible codes are available.</strong><Link to={`/unit/${unitId}`}>Choose another Part or mode</Link></> : 'Calibrating signals…'}</div></div>
 
   const isExposure = task.type === 'memory' && showExposure
-  const canSpeak = settings.audioEnabled && 'speechSynthesis' in window
+  const canSpeak = settings.audioEnabled && canSpeakEnglish()
   const submit = () => {
     const submittedInput = sanitiseLearningInput(input)
     if (!submittedInput.trim()) return
@@ -107,7 +105,7 @@ export function TrainingPage() {
     if (result?.correct || usedTiles.includes(tileIndex)) return
     setUsedTiles((value) => [...value, tileIndex])
     setInput((value) => {
-      if (task.targetKind === 'lexical') return `${value}${tile}`
+      if (task.tileMode === 'letters') return `${value}${tile}`
       if (/^[,.!?]$/.test(tile)) return `${value.trimEnd()}${tile}`
       return value ? `${value} ${tile}` : tile
     })
@@ -121,8 +119,7 @@ export function TrainingPage() {
           <div className="challenge-meta"><span>{task.label}</span><span>CODE {String(index + 1).padStart(2, '0')}</span></div>
           {isExposure ? <div className="exposure"><p>LOCK THIS CODE IN MEMORY</p><motion.strong initial={{ opacity: .2 }} animate={{ opacity: 1 }}>{task.answer}</motion.strong><div className="scan-line" /><small>The signal will fade…</small></div> : <>
             <h1>{task.instruction}</h1>
-            {(task.type === 'final-decode') && <Cue cue={task.cue} />}
-            {task.type === 'audio' && <button className="audio-button" onClick={() => speak(task.answer)} disabled={!canSpeak}><Volume2 /> Play code <small>REPLAY FREE</small></button>}
+            {task.type === 'audio' && <button className="audio-button" onClick={() => { void speakEnglish(task.answer) }} disabled={!canSpeak}><Volume2 /> Play code <small>REPLAY FREE</small></button>}
             {task.prompt && <div className={task.prompt.includes('\n') ? 'dialogue-prompt' : 'text-prompt'}>{task.prompt.split('\n').map((line) => <span key={line}>{line}</span>)}</div>}
             {task.tiles && <div className="tile-workspace"><div className="tile-result" aria-live="polite">{input || <span>Build the code here</span>}</div><div className="tiles" aria-label="Letter or word tiles">{task.tiles.map((tile, tileIndex) => <button key={`${tile}-${tileIndex}`} className={usedTiles.includes(tileIndex) ? 'used' : ''} disabled={usedTiles.includes(tileIndex)} onClick={() => addTile(tile, tileIndex)}>{tile}</button>)}</div></div>}
             <form onSubmit={(event) => { event.preventDefault(); result?.correct ? next() : submit() }}>

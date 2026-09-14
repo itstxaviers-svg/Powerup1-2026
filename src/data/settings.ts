@@ -1,6 +1,6 @@
 import type { AppSettings } from '../domain/types'
 
-export const defaultSettings: AppSettings = { sessionLength: 8, memoryDuration: 3000, audioEnabled: true, strictPunctuation: false, generousHints: true, soundEnabled: true, musicEnabled: true, reducedMotion: false, largeText: false, vibrationEnabled: true }
+export const defaultSettings: AppSettings = { sessionLength: 8, memoryDuration: 3000, audioEnabled: true, generousHints: true, soundEnabled: true, musicEnabled: true, reducedMotion: false, largeText: false, vibrationEnabled: true }
 const key = 'word-code:settings'
 
 export function loadSettings(): AppSettings {

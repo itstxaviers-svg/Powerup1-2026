@@ -24,11 +24,9 @@ The product will eventually contain:
 
 ### Current implementation scope
 
-Only **Hello!** has real learning content in Phase 1.
+The existing Power Up 1 content for **Hello! and Units 1–9** is wired into the shared content model. Every Unit has serialisable Parts, and all learning sessions continue to use the same five data-driven games.
 
-Units 1–9 must already exist in the application data model and unit selector, but they must be shown as **Coming soon** and must not contain invented vocabulary or grammar.
-
-The architecture must make it possible to add future units as content, not as new game code.
+Mandatory cumulative fighting checkpoints appear after Units 3, 7 and 9. Unit 4 is gated by Checkpoint 03, Unit 8 by both Checkpoint 07 fights, and final completion by both Checkpoint 09 fights. Do not invent additional curriculum to fill gaps in the existing content.
 
 ---
 
@@ -360,20 +358,7 @@ A static-host-friendly hash router is acceptable and preferred if deployment doe
 
 ### Home / Unit Select
 
-Display all ten course blocks:
-
-- Hello! — active
-- Unit 1 — Coming soon
-- Unit 2 — Coming soon
-- Unit 3 — Coming soon
-- Unit 4 — Coming soon
-- Unit 5 — Coming soon
-- Unit 6 — Coming soon
-- Unit 7 — Coming soon
-- Unit 8 — Coming soon
-- Unit 9 — Coming soon
-
-Do not invent titles or content for Units 1–9 yet.
+Display all ten course blocks and the checkpoint nodes after Units 3, 7 and 9. Existing Unit content is active, subject to checkpoint gates. A newly activated checkpoint must show a corrupted-signal message and an explicit `ENTER BATTLE` action; never force the learner directly into combat.
 
 ### Hello! dashboard
 
@@ -423,137 +408,47 @@ Avoid:
 
 ## 13. Core Game Modes
 
-Implement these reusable modes. They must work from data, not be hardcoded specifically for Hello!.
+The application has exactly five reusable, data-driven game modes. Each mode supports both individual words and controlled phrase/grammar examples where appropriate.
 
-### 13.1 SCAN / MEMORY
+### 13.1 REPAIR
 
-Purpose: visual encoding.
-
-Flow:
-
-1. show correct target for a short configurable time
-2. hide it
-3. ask learner to reproduce it
+The learner restores a partially damaged word or phrase. Some correct letters must always remain visible, so Repair never becomes full recall.
 
 Examples:
 
-- `yellow` appears for 3 seconds
-- word disappears
-- learner types `yellow`
+- `Y _ L L O W` → `YELLOW`
+- `What’s your n _ me?` → `What’s your name?`
 
-The target display duration must be configurable and may adapt by difficulty.
+### 13.2 AUDIO CODE
 
-### 13.2 REPAIR
+The learner hears the complete target and writes it without seeing its spelling. Replay is free. Prefer an `en-GB` browser voice, never serve an audio-only task when speech synthesis is unavailable, and keep the architecture ready for recorded audio.
 
-Purpose: supported spelling reconstruction.
+### 13.3 MEMORY
 
-Examples:
+Show the complete target for a configurable short time, hide it completely, then ask the learner to write it. No partial-letter clue remains after the memorisation stage.
 
-- `y _ l l _ w`
-- `s _ v _ n`
-- `What’s your n _ m _ ?`
+### 13.4 UNSCRAMBLE
 
-The blank positions must be generated safely. Do not remove so many letters that a beginner has no useful cue at easy difficulty.
-
-### 13.3 UNSCRAMBLE
-
-Purpose: orthographic reconstruction.
+Scramble letters for individual words, preserving every letter and duplicate exactly. Scramble words or meaningful chunks for phrases and grammar examples.
 
 Examples:
 
-- `W O L L E Y` -> `YELLOW`
-- draggable/tappable letter tiles on touch devices
+- `W O L L E Y` → `YELLOW`
+- `you? / old / How / are` → `How old are you?`
 
-Support two input styles:
+Tapping must work comfortably on phones; precise drag-and-drop is never required. Keyboard typing remains available.
 
-- tap/drag tiles
-- keyboard typing
+### 13.5 ERROR HUNT
 
-Do not require drag-and-drop for accessibility; tapping must always work.
-
-### 13.4 ERROR HUNT
-
-Purpose: error noticing and correction.
+Show a realistic curated mistake and ask the learner to correct it. Prefer each target’s `commonErrors` library and do not generate meaningless random corruption.
 
 Examples:
 
-- `yelow` -> `yellow`
-- `gren` -> `green`
-- `Im eight.` -> `I’m eight.`
+- `YELOW` → `YELLOW`
+- `EIGTH` → `EIGHT`
+- `Whats your name?` → `What’s your name?`
 
-Feedback should say how many meaningful errors remain where possible, for example:
-
-- `1 error found`
-- `One letter is missing.`
-- `Check the apostrophe.`
-
-Do not expose the full answer immediately after the first incorrect attempt.
-
-### 13.5 AUDIO CODE
-
-Purpose: sound-to-spelling recall.
-
-Use browser speech synthesis as a Phase-1 progressive enhancement with a preferred `en-GB` voice and sensible fallbacks.
-
-Requirements:
-
-- learner can replay audio
-- no score penalty for replay
-- audio button has clear accessible label
-- if speech synthesis is unavailable, do not serve an audio-only challenge
-- architecture must allow pre-recorded audio assets to replace TTS later
-
-### 13.6 FINAL DECODE
-
-Purpose: independent recall.
-
-Prompt can be:
-
-- colour swatch
-- number glyph
-- simple semantic icon
-- short contextual cue
-- audio
-
-No letters from the answer are shown.
-
-### 13.7 SENTENCE BUILD
-
-Purpose: phrase and grammar reconstruction.
-
-Examples:
-
-- `What’s / your / name / ?`
-- `How / old / are / you / ?`
-
-Support tap-to-order tokens on phones.
-
-### 13.8 DIALOGUE GAP
-
-Purpose: written use of a phrase in context.
-
-Example:
-
-- A: `Hello! What’s your name?`
-- B: `__________ Sam.`
-
-Expected: `I’m`
-
-Or:
-
-- A: `How old are you?`
-- B: `__________ eight.`
-
-### 13.9 PUNCTUATION CHECK
-
-Purpose: capitalisation, apostrophes, question marks, and full stops.
-
-Examples:
-
-- `what’s your name` -> `What’s your name?`
-- `im eight` -> `I’m eight.`
-
-This mode is important because learners are weak in writing.
+Do not expose the complete answer immediately after the first incorrect attempt.
 
 ---
 
@@ -710,21 +605,39 @@ export type UnitId =
   | 'unit-8'
   | 'unit-9'
 
+export interface UnitPart {
+  id: string
+  unitId: UnitId
+  order: number
+  title: string
+  description: string
+}
+
 export interface CourseUnit {
   id: UnitId
   order: number
   title: string
   status: 'active' | 'coming-soon' | 'hidden'
+  parts: UnitPart[]
   vocabularyIds: string[]
   phraseIds: string[]
   grammarIds: string[]
 }
 ```
 
-Phase-1 status:
+Every playable Unit is divided into serialisable Parts. Every lexical item and grammar point has a `partId`. The learner may select one Part, several Parts, or `All Parts`; the most recent valid selection is remembered per Unit. Missing or obsolete saved Part IDs fall back safely to `All Parts`.
+
+Part filtering happens before generation:
+
+`Unit → selected Part(s) → eligible content → mastery weighting → compatible mode → variation → anti-repetition → session`
+
+When multiple Parts are selected, interleave them with soft balancing so a larger Part does not dominate the session.
+
+Current status:
 
 - `hello`: active
-- `unit-1` ... `unit-9`: coming-soon
+- `unit-1` ... `unit-9`: active where existing approved content is present
+- Unit 4 and Unit 8 may be locally sealed by checkpoint progress
 
 ---
 
@@ -738,6 +651,7 @@ Suggested structure:
 export interface LexicalItem {
   id: string
   unitId: UnitId
+  partId: string
   kind: 'word' | 'phrase'
   text: string
   category:
@@ -792,6 +706,7 @@ Suggested model:
 export interface GrammarPoint {
   id: string
   unitId: UnitId
+  partId: string
   title: string
   learningGoal: string
   canonicalPatterns: string[]
@@ -830,7 +745,7 @@ export interface GrammarExerciseBlueprint {
   answerPattern: string
   slotRules?: Record<string, string>
   difficulty: 1 | 2 | 3 | 4 | 5
-  hintStrategy: 'letters' | 'words' | 'punctuation' | 'none'
+  hintStrategy: 'letters' | 'words' | 'none'
   enabled: boolean
 }
 ```
@@ -870,14 +785,11 @@ Active target number words:
 
 Each number must support:
 
-- number glyph -> word
-- word -> number recognition
 - Repair
-- Unscramble
-- Memory
-- Error Hunt
 - Audio Code
-- Final Decode
+- Memory
+- Unscramble
+- Error Hunt
 
 The main goal is spelling the English word, not arithmetic.
 
@@ -950,6 +862,16 @@ Teacher Mode must allow editing the name pool later.
 
 Never score a learner on memorising a generated character name unless the task specifically displays the name as a copyable slot.
 
+### 21.5 Hello! Parts
+
+Hello! contains exactly these Parts:
+
+- Numbers — number words one–ten
+- Colours — the eleven approved British colour targets
+- Introductions — the approved greeting, name, age and favourite-colour patterns
+
+The learner can choose any one Part, any combination, or `All Parts`.
+
 ---
 
 ## 22. Hello! Grammar Libraries
@@ -975,7 +897,7 @@ Curated errors can include:
 
 - `Helo!`
 - `Helllo!`
-- `Hi.` when an exclamation mark is the current punctuation target
+- `Hi.` when writing accuracy is the current focus
 
 Do not over-test punctuation if the goal of the current task is only spelling.
 
@@ -987,13 +909,11 @@ Canonical pattern:
 
 Exercise library must support:
 
-- Sentence Build
 - Repair
-- Memory
 - Audio Code
+- Memory
+- Unscramble
 - Error Hunt
-- Punctuation Check
-- Dialogue Gap / choose or write the question
 
 Curated error examples:
 
@@ -1015,12 +935,11 @@ Canonical patterns:
 
 Exercise types:
 
-- Dialogue Gap
-- Sentence Build
 - Repair
-- Error Hunt
+- Audio Code
 - Memory
-- Punctuation Check
+- Unscramble
+- Error Hunt
 
 Curated errors:
 
@@ -1039,13 +958,11 @@ Canonical pattern:
 
 Exercise types:
 
-- Sentence Build
 - Repair
-- Memory
 - Audio Code
+- Memory
+- Unscramble
 - Error Hunt
-- Dialogue Gap
-- Punctuation Check
 
 Curated errors:
 
@@ -1068,12 +985,11 @@ Allowed number slot values in Hello!:
 
 Exercise types:
 
-- Dialogue Gap
-- Sentence Build
-- number glyph -> full sentence
-- Error Hunt
+- Repair
+- Audio Code
 - Memory
-- Punctuation Check
+- Unscramble
+- Error Hunt
 
 ### G-H-06 — Introducing another person
 
@@ -1083,10 +999,10 @@ Canonical pattern:
 
 Exercise types:
 
-- Sentence Build
-- Dialogue Gap
 - Repair
+- Audio Code
 - Memory
+- Unscramble
 - Error Hunt
 
 Curated errors:
@@ -1104,7 +1020,7 @@ Canonical pattern:
 
 Use this as a small phrase/chunk library, not as a major grammar lesson.
 
-Teach the comma visually when punctuation is the selected skill.
+Teach the comma visually when writing accuracy is the selected focus.
 
 ### G-H-08 — Fixed phrase: our barn
 
@@ -1114,10 +1030,11 @@ Canonical phrase:
 
 Use mainly for:
 
-- Memory
 - Repair
-- Sentence Build
 - Audio Code
+- Memory
+- Unscramble
+- Error Hunt
 
 Do not introduce a large farm vocabulary set.
 
@@ -1158,11 +1075,10 @@ Use British spelling as the mastery target:
 
 Exercise types:
 
-- colour swatch -> full sentence
-- Dialogue Gap
-- Sentence Build
 - Repair
+- Audio Code
 - Memory
+- Unscramble
 - Error Hunt
 
 ---
@@ -1327,11 +1243,14 @@ Because Phase 1 has no accounts/backend, Teacher Mode edits apply to the current
 Teacher can:
 
 - view all units
+- view and edit Parts for Units that contain local content
 - enable/disable local custom content
 - see unit status
 - change a locally imported unit between hidden/available where content exists
 
 Do not allow empty Units 1–9 to appear playable by default.
+
+All Teacher Mode task-type selectors and exercise blueprints are limited to Repair, Audio Code, Memory, Unscramble and Error Hunt.
 
 #### Vocabulary & Phrases
 
@@ -1365,7 +1284,7 @@ Every grammar detail screen should visibly show its **exercise library health**,
 
 - `12 examples`
 - `8 error variants`
-- `6 task types`
+- `5 task types`
 - `42 possible task signatures`
 
 This helps the teacher see whether a grammar point will become repetitive.
@@ -1378,7 +1297,7 @@ Teacher can configure locally:
 - enabled task types
 - memory display duration
 - audio mode enabled/disabled
-- punctuation strictness
+- writing-accuracy strictness
 - hint generosity
 - review mix
 
@@ -1694,7 +1613,7 @@ At minimum:
 2. complete a short spelling session
 3. make an error and receive a hint
 4. verify the weak word returns later
-5. complete a sentence build task
+5. complete a phrase Unscramble task
 6. use a phone-sized viewport in portrait
 7. open the software-keyboard-relevant input flow without layout overflow
 8. add a custom word in Teacher Mode
@@ -1766,8 +1685,7 @@ Before considering a feature complete:
 - Unscramble
 - Memory
 - Error Hunt
-- Final Decode
-- Sentence Build
+- Audio Code
 - task signatures
 
 ### Milestone 4 — Game UX
@@ -1842,7 +1760,7 @@ Phase 1 is complete only when all of the following are true:
 - All 11 specified colours are present.
 - All specified Hello! phrases/patterns are present.
 - All active Hello! grammar points have their own exercise libraries.
-- Units 1–9 exist as Coming soon without invented content.
+- Hello! and the existing approved Unit 1–9 content are available through serialisable Parts.
 
 ### Gameplay
 
@@ -1893,7 +1811,7 @@ Phase 1 is complete only when all of the following are true:
 
 Do not spend Phase-1 time on:
 
-- Units 1–9 learning content
+- speculative vocabulary, grammar, or image assets not present in the approved Unit libraries
 - real user authentication
 - classroom cloud sync
 - public leaderboards
@@ -1940,3 +1858,26 @@ and start thinking:
 > “I know this code. I can restore it.”
 
 Every design, animation, feedback message, and exercise generator should support that feeling.
+
+---
+
+## 45. Current Fighting Checkpoints
+
+These rules are current and override older phase notes.
+
+- Regular learning contains exactly five games: Repair, Audio Code, Memory, Unscramble and Error Hunt.
+- Mastery evidence ranks as Repair (low), Unscramble and Error Hunt (medium), Memory (high), and Audio Code (strongest). Repair alone can never produce mastery; mastery also requires varied modes, several independent recalls and more than one session day.
+- Part filtering always precedes mastery weighting, compatible-game selection, variation and anti-repetition. `All Parts` is selection state, not a curriculum Part. Invalid saved Part IDs safely fall back to all current Parts.
+- Battles use cumulative, unique, enabled vocabulary `word` targets only. Hello!, phrases and grammar are excluded.
+- Each fight uses `Math.ceil(eligibleUniqueWords / 3)` after the eligible cumulative pool is built. Image availability assigns presentation only and never filters the vocabulary pool before selection.
+- Paired fights after Units 7 and 9 are allocated together from one shuffle into non-overlapping one-third sets. Failed retries keep the same persisted word set and only reshuffle its order; only `either` items may change prompt form.
+- The only battle prompts are Audio → Type and Image → Type. There are no battle hints, answer choices, translation prompts or regular-game mechanics.
+- Checkpoint 03 uses GLITCH KITSUNE, Units 1–3, 10 seconds per answer and an 85% pass threshold.
+- Checkpoint 07-A uses NULLWEAVER and Checkpoint 07-B uses AETHER GOLEM, Units 1–7, 8 seconds per answer and 85% in each fight.
+- Super Battle 09-A uses SIGNAL SERPENT and the Final Super Battle uses THE CORRUPTED ARCHIVIST, Units 1–9, 6 seconds per answer and 85% in each fight.
+- The Corrupted Archivist is the original humanoid techno-magical archive guardian: ivory/navy robe-armour, gold details, broken archive halo and cyan/gold versus violet-magenta corruption. Never use the bird/drill/propeller concept.
+- Battles are first-person. No player avatar is visible. Correct answers send a cyan strike from the camera; wrong answers and timeouts bring the boss towards the camera with a restrained coral edge vignette and no gore.
+- Every boss reveals its name and corrupted line before `START BATTLE`. Timers cannot start before that learner action. Audio timers start only after the initial playback ends, and replay never pauses or resets a running timer.
+- Passing enters a persisted purification state before progression unlocks. The purified opponent remains visible, says its configured thank-you line followed by `You restored every code.`, and waits for `CONTINUE`. Failure never shows purification.
+- The Unit 1–3 battle image metadata maps approved local files under `assets/Power_Up_1_Units_1_3_Assets/Unit_1`, `Unit_2` and `Unit_3`. Mapped unambiguous words use `either`; unmapped or ambiguous words use Audio. The Unit 1 `crayon` target intentionally uses `17_crayons.png`, and British `rubber` remains canonical.
+- Local battle persistence retains activation, paired allocations, completed fights, best accuracy, retry weaknesses, pending purification and final course completion. Load-time normalisation supplies safe defaults without discarding older progress or obsolete regular-mode history.

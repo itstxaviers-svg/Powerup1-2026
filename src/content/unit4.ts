@@ -1,7 +1,7 @@
 import type { CourseUnit, GrammarPoint, LexicalItem, TaskType } from '../domain/types'
 
-const wordTasks: TaskType[] = ['memory', 'repair', 'unscramble', 'error-hunt', 'audio', 'final-decode']
-const sentenceTasks: TaskType[] = ['memory', 'repair', 'error-hunt', 'audio', 'sentence-build', 'dialogue-gap', 'punctuation']
+const wordTasks: TaskType[] = ['repair', 'audio', 'memory', 'unscramble', 'error-hunt']
+const sentenceTasks: TaskType[] = ['repair', 'audio', 'memory', 'unscramble', 'error-hunt']
 
 export const unit4Groups = [
   { id: 'food-vocabulary-1', title: 'Food with friends', subtitle: 'Vocabulary 1' },
@@ -69,7 +69,7 @@ function commonErrors(text: string) {
 }
 
 export const unit4LexicalItems: LexicalItem[] = seeds.map((seed, index) => ({
-  id: `u4-${seed.group}-${index + 1}`, unitId: 'unit-4', kind: seed.text.includes(' ') ? 'phrase' : 'word', text: seed.text,
+  id: `u4-${seed.group}-${index + 1}`, unitId: 'unit-4', partId: seed.group, kind: seed.text.includes(' ') ? 'phrase' : 'word', text: seed.text,
   category: 'other', acceptedAnswers: [seed.text], commonErrors: commonErrors(seed.text), allowedTaskTypes: wordTasks,
   cue: { type: 'situation', value: seed.cue, label: seed.cue }, difficulty: seed.difficulty ?? 1,
   tags: ['unit-4', seed.group], enabled: true,
@@ -81,14 +81,14 @@ function phrasePoint(id: string, title: string, pattern: string): GrammarPoint {
   const examples = foods.map((food, index) => ({ id: `${id}-ex-${index + 1}`, text: pattern.replace('{food}', food) }))
   const isRequest = id === 'G-4-01'
   return {
-    id, unitId: 'unit-4', title, learningGoal: isRequest ? 'Ask politely for food or drink.' : 'Offer food or drink politely.',
+    id, unitId: 'unit-4', partId: 'food-vocabulary-2', title, learningGoal: isRequest ? 'Ask politely for food or drink.' : 'Offer food or drink politely.',
     canonicalPatterns: [pattern], slots: [{ id: 'food', values: foods }], examplePool: examples,
     commonErrors: examples.slice(0, 8).map((example) => ({
       value: isRequest ? example.text.replace(', please', ' please').replace('Can I have', 'Can I has') : example.text.replace('Would you like', 'Would you likes').replace('?', '.'),
       correction: example.text, feedback: isRequest ? 'Check have, the comma and the question mark.' : 'Check like and the question mark.',
     })),
     distractorPool: isRequest ? ['Can I has cake please?', 'I can have cake?', 'Can have I cake?'] : ['Would you likes juice.', 'You would like juice?', 'Would like you juice?'],
-    exerciseBlueprints: sentenceTasks.map((taskType) => ({ id: `${id}-bp-${taskType}`, grammarId: id, taskType, promptPattern: pattern, answerPattern: pattern, difficulty: taskType === 'punctuation' ? 3 : 2, hintStrategy: taskType === 'sentence-build' ? 'words' : taskType === 'punctuation' ? 'punctuation' : 'letters', enabled: true })),
+    exerciseBlueprints: sentenceTasks.map((taskType) => ({ id: `${id}-bp-${taskType}`, grammarId: id, taskType, promptPattern: pattern, answerPattern: pattern, difficulty: 2, hintStrategy: taskType === 'unscramble' ? 'words' : 'letters', enabled: true })),
     allowedTaskTypes: sentenceTasks, difficulty: 2, tags: ['unit-4', 'food-vocabulary-2'], enabled: true,
   }
 }
@@ -99,5 +99,5 @@ export const unit4GrammarPoints: GrammarPoint[] = [
 ]
 
 export const unit4: CourseUnit = {
-  id: 'unit-4', order: 4, title: 'Unit 4', status: 'active', vocabularyIds: unit4LexicalItems.map((item) => item.id), phraseIds: [], grammarIds: unit4GrammarPoints.map((item) => item.id),
+  id: 'unit-4', order: 4, title: 'Unit 4', status: 'coming-soon', parts: [], vocabularyIds: [], phraseIds: [], grammarIds: [],
 }

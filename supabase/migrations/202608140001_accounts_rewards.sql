@@ -196,7 +196,7 @@ insert into public.rewards (id, reward_type, title, metadata) values
   ('audio-orb','artifact','Audio Orb','{"mode":"audio"}'),
   ('repair-gear','artifact','Repair Gear','{"mode":"repair"}'),
   ('decoder-lens','artifact','Decoder Lens','{"mode":"error-hunt"}'),
-  ('sentence-core','artifact','Sentence Core','{"mode":"sentence-build"}'),
+  ('sentence-core','artifact','Order Core','{"mode":"unscramble"}'),
   ('master-key','artifact','Master Key','{}'),
   ('prism-fragment','artifact','Prism Fragment','{}'),
   ('ancient-code','artifact','Ancient Code','{}')

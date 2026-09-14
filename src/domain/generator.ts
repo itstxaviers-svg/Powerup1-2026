@@ -40,7 +40,11 @@ function repair(value: string, mastery: number, seed: number, spaced = true) {
 }
 
 function taskLabel(type: TaskType) {
-  return ({ memory: 'SCAN / MEMORY', repair: 'REPAIR', unscramble: 'UNSCRAMBLE', 'error-hunt': 'ERROR HUNT', audio: 'AUDIO CODE', 'final-decode': 'FINAL DECODE', 'sentence-build': 'SENTENCE BUILD', 'dialogue-gap': 'DIALOGUE GAP', punctuation: 'PUNCTUATION CHECK' } as const)[type]
+  return ({ repair: 'REPAIR', audio: 'AUDIO CODE', memory: 'MEMORY', unscramble: 'UNSCRAMBLE', 'error-hunt': 'ERROR HUNT' } as const)[type]
+}
+
+function phraseChunks(value: string) {
+  return value.match(/[\p{L}\p{N}]+(?:[’'][\p{L}\p{N}]+)?|[,.!?]/gu) ?? []
 }
 
 function lexicalTask(item: LexicalItem, type: TaskType, seed: number, mastery = 0): Task {
@@ -52,38 +56,33 @@ function lexicalTask(item: LexicalItem, type: TaskType, seed: number, mastery = 
     return { ...base(`${item.id}:repair:${prompt}`), instruction: 'Restore the missing letters.', prompt }
   }
   if (type === 'unscramble') {
-    const tiles = taskShuffle([...answer.toUpperCase()], seed)
-    return { ...base(`${item.id}:unscramble:${tiles.join('')}`), instruction: 'Rebuild the letter order.', prompt: '', tiles }
+    const tileMode = item.kind === 'word' && !answer.includes(' ') ? 'letters' : 'chunks'
+    const source = tileMode === 'letters' ? [...answer.toUpperCase()] : phraseChunks(answer)
+    const tiles = taskShuffle(source, seed)
+    return { ...base(`${item.id}:unscramble:${tiles.join('|')}`), instruction: tileMode === 'letters' ? 'Rebuild the letter order.' : 'Rebuild the word order.', prompt: '', tiles, tileMode }
   }
   if (type === 'error-hunt') {
-    const prompt = item.commonErrors[seed % item.commonErrors.length] ?? answer.slice(0, -1)
+    const prompt = item.commonErrors[seed % item.commonErrors.length]!
     return { ...base(`${item.id}:error-hunt:${prompt}`), instruction: 'Find and repair the unstable code.', prompt: prompt.toUpperCase(), errorFeedback: 'One realistic spelling error remains.' }
   }
   if (type === 'audio') return { ...base(`${item.id}:audio`), instruction: 'Listen. Then spell the word.', prompt: '' }
-  return { ...base(`${item.id}:final-decode:${item.cue?.value ?? 'meaning'}`), instruction: 'See the clue. Spell the word.', prompt: '' }
+  return base(`${item.id}:${type}`)
 }
 
 function grammarTask(point: GrammarPoint, type: TaskType, seed: number): Task {
   const example = point.examplePool[seed % point.examplePool.length] ?? point.examplePool[0]!
   const error = point.commonErrors[seed % point.commonErrors.length]
-  const answer = (type === 'error-hunt' || type === 'punctuation') && error ? error.correction : example.text
-  const variation = (type === 'error-hunt' || type === 'punctuation') ? error?.value ?? example.id : example.id
+  const answer = type === 'error-hunt' && error ? error.correction : example.text
+  const variation = type === 'error-hunt' ? error?.value ?? example.id : example.id
   const signature = `${point.id}:${type}:${variation}`
-  const base: Task = { id: signature, signature, targetId: point.id, targetKind: 'grammar', type, label: taskLabel(type), instruction: 'Restore the sentence.', prompt: answer, answer, validationMode: type === 'punctuation' ? 'accuracy' : 'content' }
+  const base: Task = { id: signature, signature, targetId: point.id, targetKind: 'grammar', type, label: taskLabel(type), instruction: 'Restore the sentence.', prompt: answer, answer, validationMode: type === 'error-hunt' ? 'accuracy' : 'content' }
   if (type === 'memory') return { ...base, instruction: 'Type the sentence from memory.', prompt: '', exposureMs: 4000 }
   if (type === 'repair') return { ...base, instruction: 'Type the complete sentence.', prompt: repair(answer, point.difficulty * 15, seed, false) }
-  if (type === 'error-hunt' || type === 'punctuation') return { ...base, instruction: 'Correct the sentence.', prompt: error?.value ?? answer.toLocaleLowerCase('en-GB').replace(/[.!?]$/, ''), errorFeedback: error?.feedback }
-  if (type === 'sentence-build') return { ...base, instruction: 'Put every word in place.', prompt: '', tiles: taskShuffle(answer.match(/[\w’']+|[,.!?]/g) ?? [], seed) }
-  if (type === 'dialogue-gap' && point.unitId === 'unit-1') {
-    const questionEnd = answer.indexOf('?')
-    const question = answer.slice(0, questionEnd + 1)
-    const reply = answer.slice(questionEnd + 1).trim()
-    return { ...base, instruction: 'Answer the question.', prompt: `A: ${question}\nB: ________`, answer: reply, validationMode: 'content' }
+  if (type === 'error-hunt') return { ...base, instruction: 'Correct the sentence.', prompt: error!.value, errorFeedback: error!.feedback }
+  if (type === 'unscramble') {
+    const tiles = taskShuffle(phraseChunks(answer), seed)
+    return { ...base, instruction: 'Rebuild the word order.', prompt: '', tiles, tileMode: 'chunks' }
   }
-  if (type === 'dialogue-gap' && point.id === 'G-4-01') return { ...base, instruction: 'Ask politely for the food.', prompt: 'A: What would you like?\nB: ________', answer, validationMode: 'content' }
-  if (type === 'dialogue-gap' && point.id === 'G-4-02') return { ...base, instruction: 'Offer the food politely.', prompt: 'A: ________\nB: Yes, please.', answer, validationMode: 'content' }
-  if (type === 'dialogue-gap' && answer.startsWith('I’m')) return { ...base, instruction: 'Complete the reply.', prompt: `A: ${point.id === 'G-H-05' ? 'How old are you?' : 'What’s your name?'}\nB: ________${answer.slice(3)}`, answer: 'I’m', validationMode: 'content' }
-  if (type === 'dialogue-gap') return { ...base, instruction: 'Write the complete sentence.', prompt: answer.replace(/^[^ ]+/, '________') }
   if (type === 'audio') return { ...base, instruction: 'Listen, then type the sentence.', prompt: '' }
   return base
 }
@@ -95,20 +94,20 @@ export interface GenerateOptions {
   allowedTypes?: TaskType[]
   category?: 'words' | 'phrases' | 'mixed'
   unitId?: UnitId
-  groupId?: string
+  selectedPartIds?: string[]
   recentSignatures?: string[]
 }
 
 export function generateRemediation(targetId: string, previousType: TaskType, seed = Date.now()): Task | null {
   const lexical = lexicalItems.find((item) => item.id === targetId)
   if (lexical) {
-    const alternatives = lexical.allowedTaskTypes.filter((type) => type !== previousType && type !== 'memory' && type !== 'audio')
+    const alternatives = lexical.allowedTaskTypes.filter((type) => type !== previousType && type !== 'memory' && type !== 'audio' && (type !== 'error-hunt' || lexical.commonErrors.length > 0))
     const type = alternatives[seed % alternatives.length]
     return type ? lexicalTask(lexical, type, seed + 101) : null
   }
   const grammar = grammarPoints.find((item) => item.id === targetId)
   if (!grammar) return null
-  const alternatives = grammar.allowedTaskTypes.filter((type) => type !== previousType && type !== 'memory' && type !== 'audio')
+  const alternatives = grammar.allowedTaskTypes.filter((type) => type !== previousType && type !== 'memory' && type !== 'audio' && (type !== 'error-hunt' || grammar.commonErrors.length > 0))
   const type = alternatives[seed % alternatives.length]
   return type ? grammarTask(grammar, type, seed + 101) : null
 }
@@ -117,35 +116,52 @@ function progressiveWordTypes(mastery: number): TaskType[] {
   if (mastery < 20) return ['repair', 'unscramble']
   if (mastery < 45) return ['repair', 'unscramble', 'error-hunt', 'memory']
   if (mastery < 70) return ['repair', 'unscramble', 'error-hunt', 'memory', 'audio']
-  return ['repair', 'unscramble', 'error-hunt', 'memory', 'audio', 'final-decode']
+  return ['repair', 'unscramble', 'error-hunt', 'memory', 'audio']
 }
 
-export function generateSession({ length, seed = new Date().toISOString().slice(0, 10), progress = [], allowedTypes, category = 'mixed', unitId = 'hello', groupId = 'all', recentSignatures = [] }: GenerateOptions): Task[] {
+function balancedTargets<T extends LexicalItem | GrammarPoint>(targets: T[], selectedPartIds: string[], unstableIds: Set<string>, seed: number) {
+  const buckets = taskShuffle(selectedPartIds, seed).map((partId, index) => taskShuffle(targets.filter((target) => target.partId === partId), seed + index + 1)
+    .sort((left, right) => Number(unstableIds.has(right.id)) - Number(unstableIds.has(left.id))))
+  const balanced: T[] = []
+  for (let round = 0; buckets.some((bucket) => round < bucket.length); round += 1) {
+    for (const bucket of buckets) if (bucket[round]) balanced.push(bucket[round]!)
+  }
+  return balanced
+}
+
+export function generateSession({ length, seed = new Date().toISOString().slice(0, 10), progress = [], allowedTypes, category = 'mixed', unitId = 'hello', selectedPartIds, recentSignatures = [] }: GenerateOptions): Task[] {
   const baseSeed = hash(seed)
   const progressById = new Map(progress.map((item) => [item.targetId, item]))
   const recent = new Set(recentSignatures)
   const forcedMode = allowedTypes?.length === 1
   const unstableIds = new Set(progress.filter((item) => item.state === 'unstable' || item.state === 'learning').map((item) => item.targetId))
-  const inGroup = (tags: string[]) => groupId === 'all' || tags.includes(groupId)
-  const lexical = taskShuffle(lexicalItems.filter((item) => item.enabled && item.unitId === unitId && inGroup(item.tags)), baseSeed)
-  const grammar = taskShuffle(grammarPoints.filter((item) => item.enabled && item.unitId === unitId && (groupId === 'all' || item.tags?.includes(groupId)) && (item.difficulty < 4 || progress.length > 4)), baseSeed + 11)
-  const pool: Array<LexicalItem | GrammarPoint> = category === 'words' ? lexical : category === 'phrases' ? grammar : taskShuffle([...lexical, ...grammar], baseSeed + 23)
-  pool.sort((a, b) => Number(unstableIds.has(b.id)) - Number(unstableIds.has(a.id)))
+  const unitPartIds = [...new Set([...lexicalItems, ...grammarPoints].filter((item) => item.unitId === unitId).map((item) => item.partId))]
+  const activePartIds = selectedPartIds?.length ? selectedPartIds.filter((id) => unitPartIds.includes(id)) : unitPartIds
+  const selected = new Set(activePartIds.length ? activePartIds : unitPartIds)
+  const lexical = lexicalItems.filter((item) => item.enabled && item.unitId === unitId && selected.has(item.partId))
+  const grammar = grammarPoints.filter((item) => item.enabled && item.unitId === unitId && selected.has(item.partId) && (item.difficulty < 4 || progress.length > 4))
+  const eligible: Array<LexicalItem | GrammarPoint> = category === 'words'
+    ? lexical.filter((item) => item.kind === 'word')
+    : category === 'phrases'
+      ? [...lexical.filter((item) => item.kind === 'phrase'), ...grammar]
+      : [...lexical, ...grammar]
+  const pool = balancedTargets(eligible, activePartIds.length ? activePartIds : unitPartIds, unstableIds, baseSeed + 23)
+  if (!pool.length) return []
   const tasks: Task[] = []
   const targetCounts = new Map<string, number>()
   let previousTypes: TaskType[] = []
 
   for (let index = 0; tasks.length < length && index < pool.length * 6; index += 1) {
     const target = pool[index % pool.length]!
-    if ((targetCounts.get(target.id) ?? 0) >= 2) continue
+    if ((targetCounts.get(target.id) ?? 0) >= 2 || tasks.slice(-5).filter((item) => item.targetId === target.id).length >= 2) continue
     let types = target.allowedTaskTypes.filter((type) => !allowedTypes || allowedTypes.includes(type))
+    types = types.filter((type) => type !== 'error-hunt' || target.commonErrors.length > 0)
     if ('text' in target && !forcedMode) {
       const stageTypes = progressiveWordTypes(progressById.get(target.id)?.mastery ?? 0)
       types = types.filter((type) => stageTypes.includes(type))
     }
-    if (!('text' in target)) types = types.filter((type) => type !== 'final-decode' && type !== 'unscramble')
     const last = previousTypes.at(-1)
-    if (previousTypes.slice(-2).every((item) => item === last)) types = types.filter((type) => type !== last)
+    if (!forcedMode && previousTypes.length >= 2 && previousTypes.slice(-2).every((item) => item === last)) types = types.filter((type) => type !== last)
     const type = types[(baseSeed + index) % types.length] ?? types[0]
     if (!type) continue
     const task = 'text' in target ? lexicalTask(target, type, baseSeed + index, progressById.get(target.id)?.mastery ?? 0) : grammarTask(target, type, baseSeed + index)

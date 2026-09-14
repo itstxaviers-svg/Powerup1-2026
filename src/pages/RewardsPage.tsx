@@ -2,11 +2,11 @@ import { CheckCircle2, Gem, HeartPulse, Info, LockKeyhole, ShieldCheck, Sparkles
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { grammarPoints, learningGroupsByUnit, lexicalItems, units } from '../content/course'
+import { grammarPoints, lexicalItems, units } from '../content/course'
 import { rewardsAssets } from '../config/rewardsAssets'
 import { getProgress, getRewardState, getStudentProfile } from '../data/db'
 import { accessoryDefinitions, artifactDefinitions, daysSince, defaultRewardState, energyInLevel, rewardLevel, spiritStageForLevel, spiritStages, worldDefinitions, type RewardState } from '../domain/rewards'
-import type { TargetProgress, UnitId } from '../domain/types'
+import { taskTypes, type TargetProgress, type UnitId } from '../domain/types'
 import { defaultStudentProfile, type StudentProfile } from '../domain/account'
 
 type UnitReward = { unitId: UnitId; title: string; percent: number; mastered: boolean; attempted: number; total: number }
@@ -17,15 +17,14 @@ function unitRewards(progress: TargetProgress[]): UnitReward[] {
     const ids = [...unit.vocabularyIds, ...unit.phraseIds, ...unit.grammarIds]
     const records = ids.map((id) => progressById.get(id)).filter((item): item is TargetProgress => Boolean(item))
     const attempted = records.filter((item) => item.attempts > 0).length
-    const groups = learningGroupsByUnit[unit.id]
-    const completedGroups = groups?.filter((group) => {
-      const groupIds = [
-        ...lexicalItems.filter((item) => item.unitId === unit.id && item.tags.includes(group.id)).map((item) => item.id),
-        ...grammarPoints.filter((item) => item.unitId === unit.id && item.tags?.includes(group.id)).map((item) => item.id),
+    const completedParts = unit.parts.filter((part) => {
+      const partIds = [
+        ...lexicalItems.filter((item) => item.unitId === unit.id && item.partId === part.id).map((item) => item.id),
+        ...grammarPoints.filter((item) => item.unitId === unit.id && item.partId === part.id).map((item) => item.id),
       ]
-      return groupIds.length > 0 && groupIds.every((id) => (progressById.get(id)?.attempts ?? 0) > 0)
-    }).length ?? 0
-    const percent = groups?.length ? Math.round((completedGroups / groups.length) * 100) : ids.length ? Math.round((attempted / ids.length) * 100) : 0
+      return partIds.length > 0 && partIds.every((id) => (progressById.get(id)?.attempts ?? 0) > 0)
+    }).length
+    const percent = unit.parts.length ? Math.round((completedParts / unit.parts.length) * 100) : ids.length ? Math.round((attempted / ids.length) * 100) : 0
     const mastered = ids.length > 0 && ids.every((id) => progressById.get(id)?.state === 'mastered')
     return { unitId: unit.id, title: unit.title, percent, mastered, attempted, total: ids.length }
   })
@@ -34,7 +33,7 @@ function unitRewards(progress: TargetProgress[]): UnitReward[] {
 function artifactUnlocked(key: string, reward: RewardState, progress: TargetProgress[], masteredUnits: number) {
   const definition = artifactDefinitions.find((item) => item.key === key)!
   if (definition.taskType) return (reward.modeCounts[definition.taskType] ?? 0) >= definition.requirement
-  if (key === 'masterKey') return Object.values(reward.modeCounts).filter((count) => (count ?? 0) > 0).length >= definition.requirement
+  if (key === 'masterKey') return taskTypes.filter((type) => (reward.modeCounts[type] ?? 0) > 0).length >= definition.requirement
   if (key === 'prismFragment') return progress.filter((item) => item.state === 'stable' || item.state === 'mastered').length >= definition.requirement
   return masteredUnits >= definition.requirement
 }
@@ -90,7 +89,7 @@ export function RewardsPage() {
 
         <section className="artifacts-panel reward-glass">
           <header><div><h2>✦ MY ARTIFACTS</h2><p>Every mode can reveal a different piece of the ancient code.</p></div><span>{artifactDefinitions.filter((item) => artifactUnlocked(item.key, reward, progress, masteredCount)).length} / {artifactDefinitions.length}</span></header>
-          <div className="artifact-grid">{artifactDefinitions.map((artifact) => { const unlocked = artifactUnlocked(artifact.key, reward, progress, masteredCount); const count = artifact.taskType ? reward.modeCounts[artifact.taskType] ?? 0 : artifact.key === 'masterKey' ? Object.values(reward.modeCounts).filter(Boolean).length : artifact.key === 'prismFragment' ? progress.filter((item) => item.state === 'stable' || item.state === 'mastered').length : masteredCount; return <article className={`${unlocked ? 'unlocked' : 'locked'} rarity-${artifact.rarity.toLowerCase()}`} key={artifact.key}>
+          <div className="artifact-grid">{artifactDefinitions.map((artifact) => { const unlocked = artifactUnlocked(artifact.key, reward, progress, masteredCount); const count = artifact.taskType ? reward.modeCounts[artifact.taskType] ?? 0 : artifact.key === 'masterKey' ? taskTypes.filter((type) => (reward.modeCounts[type] ?? 0) > 0).length : artifact.key === 'prismFragment' ? progress.filter((item) => item.state === 'stable' || item.state === 'mastered').length : masteredCount; return <article className={`${unlocked ? 'unlocked' : 'locked'} rarity-${artifact.rarity.toLowerCase()}`} key={artifact.key}>
             <div><img src={rewardsAssets.artifacts[artifact.key]} alt="" />{!unlocked && <span><LockKeyhole /></span>}</div><h3>{artifact.name}</h3><p>{artifact.description}</p><footer><span>{[1,2,3,4,5].map((star) => <Star key={star} fill={star <= Math.min(5, Math.ceil(count / Math.max(1, artifact.requirement / 5))) ? 'currentColor' : 'none'} />)}</span><strong>{unlocked ? 'FOUND' : `${Math.min(count, artifact.requirement)} / ${artifact.requirement}`}</strong></footer>
           </article> })}</div>
         </section>

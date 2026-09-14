@@ -1,7 +1,7 @@
 import type { CourseUnit, GrammarPoint, LexicalItem, TaskType } from '../domain/types'
 
-const wordTasks: TaskType[] = ['memory', 'repair', 'unscramble', 'error-hunt', 'audio', 'final-decode']
-const sentenceTasks: TaskType[] = ['memory', 'repair', 'error-hunt', 'audio', 'sentence-build', 'dialogue-gap', 'punctuation']
+const wordTasks: TaskType[] = ['repair', 'audio', 'memory', 'unscramble', 'error-hunt']
+const sentenceTasks: TaskType[] = ['repair', 'audio', 'memory', 'unscramble', 'error-hunt']
 
 export const unit1Groups = [
   { id: 'school-vocabulary-1', title: 'Our school', subtitle: 'Vocabulary 1' },
@@ -37,7 +37,7 @@ const seeds: WordSeed[] = [
   { text: 'paper', group: 'school-vocabulary-2', cue: 'A thin sheet used for writing or drawing.' },
   { text: 'cupboard', group: 'school-vocabulary-2', cue: 'Storage furniture with doors.', difficulty: 2 },
   { text: 'ruler', group: 'school-vocabulary-2', cue: 'A school tool for measuring and straight lines.' },
-  { text: 'in the playground', group: 'school-vocabulary-2', cue: 'A place phrase: outside where pupils play.', difficulty: 3 },
+  { text: 'playground', group: 'school-vocabulary-2', cue: 'A place outside where pupils play.', difficulty: 2 },
   { text: 'window', group: 'school-vocabulary-2', cue: 'You can see outside through it.' },
   { text: 'wall', group: 'school-vocabulary-2', cue: 'One vertical side of a room.' },
   { text: 'board', group: 'school-vocabulary-2', cue: 'A teacher writes on it for the class.' },
@@ -65,6 +65,7 @@ function commonErrors(text: string) {
 export const unit1LexicalItems: LexicalItem[] = seeds.map((seed, index) => ({
   id: `u1-${seed.group}-${index + 1}`,
   unitId: 'unit-1',
+  partId: seed.group,
   kind: seed.text.includes(' ') ? 'phrase' : 'word',
   text: seed.text,
   category: 'other',
@@ -85,7 +86,7 @@ function grammarPoint(id: string, title: string, question: string, answerPattern
   const examples = objects.map((object, index) => ({ id: `${id}-ex-${index + 1}`, text: `${question} ${answerPattern.replace('{object}', pluralMode ? plural(object) : object)}` }))
   const taskTypes = sentenceTasks
   return {
-    id, unitId: 'unit-1', title, learningGoal: pluralMode ? 'Ask about and name more than one school object.' : 'Ask about and name one school object.',
+    id, unitId: 'unit-1', partId: 'school-vocabulary-2', title, learningGoal: pluralMode ? 'Ask about and name more than one school object.' : 'Ask about and name one school object.',
     canonicalPatterns: [question, answerPattern], slots: [{ id: 'object', values: pluralMode ? objects.map(plural) : objects }], examplePool: examples,
     commonErrors: objects.slice(0, 8).map((object) => {
       const target = pluralMode ? plural(object) : object
@@ -94,7 +95,7 @@ function grammarPoint(id: string, title: string, question: string, answerPattern
         : { value: `What are this? It are a ${target}.`, correction: `What is this? It is a ${target}.`, feedback: 'Check is and it.' }
     }),
     distractorPool: pluralMode ? ['What is these?', 'They is windows.', 'It is windows.'] : ['What are this?', 'It are a window.', 'They are a window.'],
-    exerciseBlueprints: taskTypes.map((taskType) => ({ id: `${id}-bp-${taskType}`, grammarId: id, taskType, promptPattern: question, answerPattern, difficulty: taskType === 'punctuation' ? 3 : 2, hintStrategy: taskType === 'sentence-build' ? 'words' : taskType === 'punctuation' ? 'punctuation' : 'letters', enabled: true })),
+    exerciseBlueprints: taskTypes.map((taskType) => ({ id: `${id}-bp-${taskType}`, grammarId: id, taskType, promptPattern: question, answerPattern, difficulty: 2, hintStrategy: taskType === 'unscramble' ? 'words' : 'letters', enabled: true })),
     allowedTaskTypes: taskTypes, difficulty: 2, tags: ['unit-1', 'school-vocabulary-2'], enabled: true,
   }
 }
@@ -105,6 +106,6 @@ export const unit1GrammarPoints: GrammarPoint[] = [
 ]
 
 export const unit1: CourseUnit = {
-  id: 'unit-1', order: 1, title: 'Unit 1', status: 'active',
-  vocabularyIds: unit1LexicalItems.map((item) => item.id), phraseIds: [], grammarIds: unit1GrammarPoints.map((item) => item.id),
+  id: 'unit-1', order: 1, title: 'Unit 1', status: 'coming-soon', parts: [],
+  vocabularyIds: [], phraseIds: [], grammarIds: [],
 }

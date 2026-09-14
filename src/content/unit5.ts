@@ -1,6 +1,6 @@
 import type { CourseUnit, LexicalItem, TaskType } from '../domain/types'
 
-const wordTasks: TaskType[] = ['memory', 'repair', 'unscramble', 'error-hunt', 'audio', 'final-decode']
+const wordTasks: TaskType[] = ['repair', 'audio', 'memory', 'unscramble', 'error-hunt']
 
 export const unit5Groups = [
   { id: 'birthday-vocabulary-1', title: 'Happy birthday', subtitle: 'Vocabulary 1' },
@@ -63,12 +63,12 @@ function commonErrors(text: string) {
 }
 
 export const unit5LexicalItems: LexicalItem[] = seeds.map((seed, index) => ({
-  id: `u5-${seed.group}-${index + 1}`, unitId: 'unit-5', kind: seed.text.includes(' ') ? 'phrase' : 'word', text: seed.text,
+  id: `u5-${seed.group}-${index + 1}`, unitId: 'unit-5', partId: seed.group, kind: seed.text.includes(' ') ? 'phrase' : 'word', text: seed.text,
   category: 'other', acceptedAnswers: [seed.text], commonErrors: commonErrors(seed.text), allowedTaskTypes: wordTasks,
   cue: { type: 'situation', value: seed.cue, label: seed.cue }, difficulty: seed.difficulty ?? 1,
   tags: ['unit-5', seed.group], enabled: true,
 }))
 
 export const unit5: CourseUnit = {
-  id: 'unit-5', order: 5, title: 'Unit 5', status: 'active', vocabularyIds: unit5LexicalItems.map((item) => item.id), phraseIds: [], grammarIds: [],
+  id: 'unit-5', order: 5, title: 'Unit 5', status: 'coming-soon', parts: [], vocabularyIds: [], phraseIds: [], grammarIds: [],
 }

@@ -68,8 +68,8 @@ export const artifactDefinitions: RewardDefinition[] = [
   { key: 'audioOrb', name: 'Audio Orb', taskType: 'audio', requirement: 3, description: 'Decode audio signals.', rarity: 'Core' },
   { key: 'repairGear', name: 'Repair Gear', taskType: 'repair', requirement: 3, description: 'Restore broken codes.', rarity: 'Core' },
   { key: 'decoderLens', name: 'Decoder Lens', taskType: 'error-hunt', requirement: 3, description: 'Find unstable patterns.', rarity: 'Rare' },
-  { key: 'sentenceCore', name: 'Sentence Core', taskType: 'sentence-build', requirement: 3, description: 'Rebuild full sentences.', rarity: 'Rare' },
-  { key: 'masterKey', name: 'Master Key', requirement: 6, description: 'Use six decoding modes.', rarity: 'Epic' },
+  { key: 'sentenceCore', name: 'Order Core', taskType: 'unscramble', requirement: 3, description: 'Rebuild letter and word order.', rarity: 'Rare' },
+  { key: 'masterKey', name: 'Master Key', requirement: 5, description: 'Use all five decoding modes.', rarity: 'Epic' },
   { key: 'prismFragment', name: 'Prism Fragment', requirement: 25, description: 'Stabilise 25 codes.', rarity: 'Rare' },
   { key: 'ancientCode', name: 'Ancient Code', requirement: 1, description: 'Master a complete unit.', rarity: 'Epic' },
 ]

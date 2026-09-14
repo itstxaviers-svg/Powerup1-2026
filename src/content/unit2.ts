@@ -1,6 +1,6 @@
 import type { CourseUnit, LexicalItem, TaskType } from '../domain/types'
 
-const wordTasks: TaskType[] = ['memory', 'repair', 'unscramble', 'error-hunt', 'audio', 'final-decode']
+const wordTasks: TaskType[] = ['repair', 'audio', 'memory', 'unscramble', 'error-hunt']
 
 export const unit2Groups = [
   { id: 'family', title: 'All about us', subtitle: 'Vocabulary 1 · Family' },
@@ -62,6 +62,7 @@ function commonErrors(text: string) {
 export const unit2LexicalItems: LexicalItem[] = seeds.map((seed, index) => ({
   id: `u2-${seed.group}-${index + 1}`,
   unitId: 'unit-2',
+  partId: seed.group,
   kind: 'word',
   text: seed.text,
   category: 'other',
@@ -75,6 +76,6 @@ export const unit2LexicalItems: LexicalItem[] = seeds.map((seed, index) => ({
 }))
 
 export const unit2: CourseUnit = {
-  id: 'unit-2', order: 2, title: 'Unit 2', status: 'active',
-  vocabularyIds: unit2LexicalItems.map((item) => item.id), phraseIds: [], grammarIds: [],
+  id: 'unit-2', order: 2, title: 'Unit 2', status: 'coming-soon', parts: [],
+  vocabularyIds: [], phraseIds: [], grammarIds: [],
 }
