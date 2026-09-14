@@ -61,6 +61,7 @@ test('opens Checkpoint 03 without Unit mastery and keeps later Units sealed', as
   await expect(enterBattle).toHaveCount(1)
   await enterBattle.click()
   await expect(page.locator('.battle-intro-copy blockquote')).toContainText('You cannot clear this signal.')
+  await expect(page.locator('.battle-intro-copy')).toContainText('no more than 5 mistakes')
   await expect(page.getByRole('button', { name: /START BATTLE/ })).toBeVisible()
   await expect(page.locator('.battle-boss img')).toBeVisible()
   expect(await page.locator('.battle-boss img').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)

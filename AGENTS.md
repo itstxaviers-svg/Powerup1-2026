@@ -1874,9 +1874,10 @@ These rules are current and override older phase notes.
 - Each fight uses `Math.ceil(eligibleUniqueWords / 3)` after the eligible cumulative pool is built. Image availability assigns presentation only and never filters the vocabulary pool before selection.
 - Paired fights after Units 7 and 9 are allocated together from one shuffle into non-overlapping one-third sets. Failed retries keep the same persisted word set and only reshuffle its order; only `either` items may change prompt form.
 - The only battle prompts are Audio → Type and Image → Type. There are no battle hints, answer choices, translation prompts or regular-game mechanics.
-- Checkpoint 03 uses GLITCH KITSUNE, Units 1–3, 10 seconds per answer, an 85% pass threshold and a maximum of 2 mistakes.
-- Checkpoint 07-A uses NULLWEAVER and Checkpoint 07-B uses AETHER GOLEM, Units 1–7, 8 seconds per answer, 85% in each fight and a maximum of 3 mistakes per fight.
-- Super Battle 09-A uses SIGNAL SERPENT and the Final Super Battle uses THE CORRUPTED ARCHIVIST, Units 1–9, 6 seconds per answer, 85% in each fight and a maximum of 3 mistakes per fight.
+- Checkpoint 03 uses GLITCH KITSUNE, Units 1–3, 10 seconds per answer, an 85% pass threshold and a maximum of 5 mistakes.
+- Checkpoint 07-A uses NULLWEAVER and Checkpoint 07-B uses AETHER GOLEM, Units 1–7, 8 seconds per answer, 85% in each fight and a maximum of 7 mistakes per fight.
+- Super Battle 09-A uses SIGNAL SERPENT and the Final Super Battle uses THE CORRUPTED ARCHIVIST, Units 1–9, 6 seconds per answer, 85% in each fight and a maximum of 7 mistakes per fight.
+- Audio Code and battle audio use the clearest available British English device voice, a deliberately slower speaking rate, full volume and neutral pitch. Recorded audio plays slightly more slowly with pitch preservation. The first battle timer starts only after the complete initial pronunciation.
 - The Corrupted Archivist is the original humanoid techno-magical archive guardian: ivory/navy robe-armour, gold details, broken archive halo and cyan/gold versus violet-magenta corruption. Never use the bird/drill/propeller concept.
 - Battles are first-person. No player avatar is visible. Correct answers send a cyan strike from the camera; wrong answers and timeouts bring the boss towards the camera with a restrained coral edge vignette and no gore.
 - Every boss reveals its name and corrupted line before `START BATTLE`. Timers cannot start before that learner action. Audio timers start only after the initial playback ends, and replay never pauses or resets a running timer.

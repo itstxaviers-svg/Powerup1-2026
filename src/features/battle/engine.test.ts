@@ -79,9 +79,10 @@ describe('cumulative battle engine', () => {
   it('requires 85 percent, enforces the mistake cap and unlocks only after purification', () => {
     expect(accuracyPassed(17, 20)).toBe(true)
     expect(accuracyPassed(16, 20)).toBe(false)
-    expect(battlePassed(18, 20, getBattleFight('checkpoint-03')!)).toBe(true)
-    expect(battlePassed(17, 20, getBattleFight('checkpoint-03')!)).toBe(false)
+    expect(battlePassed(17, 20, getBattleFight('checkpoint-03')!)).toBe(true)
+    expect(battlePassed(34, 40, getBattleFight('checkpoint-03')!)).toBe(false)
     expect(battlePassed(17, 20, getBattleFight('checkpoint-07-a')!)).toBe(true)
+    expect(battlePassed(46, 54, getBattleFight('checkpoint-07-a')!)).toBe(false)
     const fight = getBattleFight('checkpoint-09-b')!
     const won = recordBattleResult(emptyBattleProgress('checkpoint-09'), fight, 17, 20, [])
     expect(won.pendingPurificationFightId).toBe(fight.id)

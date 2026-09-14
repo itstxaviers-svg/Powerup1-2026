@@ -22,6 +22,10 @@ async function playAudio(question: BattleQuestion) {
   if (!question.audioSrc) return speakEnglish(question.answer)
   return new Promise<boolean>((resolve) => {
     const audio = new Audio(question.audioSrc)
+    audio.preload = 'auto'
+    audio.volume = 1
+    audio.playbackRate = .9
+    audio.preservesPitch = true
     audio.onended = () => resolve(true)
     audio.onerror = () => { void speakEnglish(question.answer).then(resolve) }
     void audio.play().catch(() => { void speakEnglish(question.answer).then(resolve) })

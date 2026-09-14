@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { applyDisplaySettings, loadSettings, saveSettings } from '../data/settings'
+import { speakEnglish } from '../domain/speech'
 import type { AppSettings } from '../domain/types'
 
 export function SettingsPage() {
   const [settings, setSettings] = useState(loadSettings)
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => { const next = { ...settings, [key]: value }; setSettings(next); saveSettings(next); applyDisplaySettings(next) }
-  const testVoice = () => { if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const voice = new SpeechSynthesisUtterance('Your British voice is ready.'); voice.lang = 'en-GB'; window.speechSynthesis.speak(voice) } }
+  const testVoice = () => { void speakEnglish('Your British voice is ready.') }
   return <div className="page settings-page">
     <div className="page-title"><p className="kicker">DEVICE PREFERENCES</p><h1>Settings</h1><p>Keep training comfortable and focused.</p></div>
     <section className="settings-card">
