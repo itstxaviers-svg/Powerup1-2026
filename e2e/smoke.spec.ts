@@ -30,6 +30,7 @@ test('opens Hello and starts a session without horizontal overflow', async ({ pa
   await page.getByRole('link', { name: /Hello!/ }).click()
   await expect(page.getByRole('heading', { name: 'Hello!' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Training paths' })).toHaveCount(0)
+  await expect(page.getByText('Audio codes are ready')).toHaveCount(0)
   await expect(page.locator('.mode-card')).toHaveCount(5)
   await expect(page.locator('.mode-card strong')).toHaveText(['Repair', 'Unscramble', 'Memory', 'Error Hunt', 'Audio Code'])
   await expect(page.locator('.part-options button')).toHaveCount(4)

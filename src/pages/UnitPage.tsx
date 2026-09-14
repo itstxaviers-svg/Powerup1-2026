@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, AudioLines, BrainCircuit, Clock3, Gem, Hash, Headphones, Layers3, LockKeyhole, MessageCircle, Palette, ScanSearch, Shuffle, Sparkles, Wrench, Zap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BrainCircuit, Clock3, Gem, Hash, Headphones, Layers3, LockKeyhole, MessageCircle, Palette, ScanSearch, Shuffle, Sparkles, Wrench, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { grammarPoints, lexicalItems, units } from '../content/course'
@@ -69,6 +69,5 @@ export function UnitPage() {
     </Link>
 
     <section className="training-category"><div className="section-head mode-heading"><div><p className="kicker">DECODING PROTOCOLS</p><h2>Choose a game mode</h2><p>Every mode works with words and approved grammar from your selected Parts.</p></div><span>5 MODES</span></div><ModeGrid unitId={unitId} selectedPartsRoute={selectedRoute} /></section>
-    <div className="audio-note"><AudioLines size={20} /><div><strong>Audio codes are ready</strong><span>Replay is always free. No time pressure.</span></div></div>
   </div>
 }
