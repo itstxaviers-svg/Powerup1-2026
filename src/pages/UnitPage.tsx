@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, AudioLines, BrainCircuit, Braces, Clock3, Gem, Hash, Headphones, Layers3, LockKeyhole, MessageCircle, Palette, ScanSearch, Shuffle, Sparkles, Wrench, Zap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, AudioLines, BrainCircuit, Clock3, Gem, Hash, Headphones, Layers3, LockKeyhole, MessageCircle, Palette, ScanSearch, Shuffle, Sparkles, Wrench, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { grammarPoints, lexicalItems, units } from '../content/course'
@@ -7,12 +7,6 @@ import { loadPartSelection, savePartSelection } from '../data/partSelection'
 import { isUnitGateOpen } from '../features/battle/engine'
 import { partRoute } from '../domain/parts'
 import type { TaskType, UnitId } from '../domain/types'
-
-const paths = [
-  { id: 'words', title: 'Words', detail: 'Practise spelling targets', icon: Palette },
-  { id: 'phrases', title: 'Phrases', detail: 'Practise approved language', icon: Braces },
-  { id: 'mixed', title: 'Mixed Decode', detail: 'Mix every selected Part', icon: Layers3 },
-] as const
 
 const modes: Array<{ type: TaskType; title: string; detail: string; icon: typeof Wrench; tone: string; art: number }> = [
   { type: 'repair', title: 'Repair', detail: 'Restore missing letters', icon: Wrench, tone: 'cyan', art: 1 },
@@ -73,11 +67,6 @@ export function UnitPage() {
       <ArrowRight className="quick-arrow" />
       <span className="quick-orbit" aria-hidden="true"><Gem /><Sparkles /></span>
     </Link>
-
-    <div className="section-head"><div><p className="kicker">CHOOSE A SIGNAL</p><h2>Training paths</h2></div></div>
-    <div className="path-grid">{paths.filter((path) => path.id === 'mixed' || (path.id === 'words' ? wordCount > 0 : phraseCount > 0)).map(({ id, title, detail, icon: Icon }) => <Link key={id} to={`/train/${unitId}/${selectedRoute}/${id}`} className="path-card">
-      <span className="path-icon"><Icon size={22} /></span><div><h3>{title}</h3><p>{detail}</p><small>{id === 'words' ? `${wordCount} CODES` : id === 'phrases' ? `${phraseCount} PATTERNS` : selectedLabel.toUpperCase()}</small></div><ArrowRight size={18} />
-    </Link>)}</div>
 
     <section className="training-category"><div className="section-head mode-heading"><div><p className="kicker">DECODING PROTOCOLS</p><h2>Choose a game mode</h2><p>Every mode works with words and approved grammar from your selected Parts.</p></div><span>5 MODES</span></div><ModeGrid unitId={unitId} selectedPartsRoute={selectedRoute} /></section>
     <div className="audio-note"><AudioLines size={20} /><div><strong>Audio codes are ready</strong><span>Replay is always free. No time pressure.</span></div></div>

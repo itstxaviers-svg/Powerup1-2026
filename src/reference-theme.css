@@ -230,7 +230,6 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 .quick-card::before { content: ""; position: absolute; inset: 0; opacity: .35; background: linear-gradient(115deg, transparent 65%, rgba(255,255,255,.18) 65% 66%, transparent 66%), radial-gradient(circle, white 0 1px, transparent 1.5px); background-size: auto, 32px 32px; }
 .quick-card > * { position: relative; z-index: 2; }.quick-icon { color: #1d4360; background: linear-gradient(145deg, #fff7a8, #ffd06f 48%, #ffae67); box-shadow: 0 0 24px rgba(255,208,111,.42); }
 .quick-orbit { position: absolute; z-index: 1; right: 11%; width: 110px; height: 110px; display: grid; place-items: center; border: 2px solid rgba(106,231,255,.35); border-radius: 50%; transform: scaleY(.47) rotate(-14deg); }.quick-orbit svg { position: absolute; width: 42px; height: 42px; color: rgba(222,252,255,.6); }.quick-orbit svg:last-child { right: -7px; width: 18px; }
-.path-card { border-color: var(--glass-border); background: linear-gradient(145deg, rgba(255,255,255,.93), rgba(231,245,255,.82)); box-shadow: 0 10px 24px rgba(50,98,143,.08), inset 0 1px 0 white; transition: transform .2s, box-shadow .2s; }.path-card:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(50,98,143,.15); }.path-icon { color: #1a79aa; background: linear-gradient(145deg, #e8fbff, #cdeeff); box-shadow: inset 0 0 0 1px rgba(86,224,255,.26); }
 .part-selector { margin: 30px 0 20px; }.part-selector .section-head { margin-bottom: 14px; }.part-selector .section-head p:last-child { margin: 4px 0 0; color: #667f95; font-size: 12px; }.part-selector .section-head > span { max-width: 48%; text-align: right; }
 .part-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }.part-options button { min-height: 78px; padding: 13px; display: flex; align-items: center; gap: 10px; text-align: left; border: 1px solid rgba(94,172,216,.28); border-radius: 15px; color: #315a78; background: rgba(249,253,255,.8); box-shadow: inset 0 1px 0 white; transition: border-color .18s, background .18s, transform .18s; }.part-options button:hover { transform: translateY(-2px); }.part-options button > svg { flex: 0 0 35px; width: 35px; height: 35px; padding: 8px; border-radius: 10px; color: #297da5; background: #e5f7ff; }.part-options button span { min-width: 0; display: flex; flex-direction: column; }.part-options button strong { font-size: 13px; }.part-options button small { margin-top: 2px; color: #70879a; font-size: 9px; line-height: 1.25; }.part-options button.selected { border-color: rgba(60,186,222,.75); color: #154e71; background: linear-gradient(145deg, #effcff, #e4f2ff); box-shadow: 0 8px 21px rgba(45,115,159,.12), inset 0 0 0 1px rgba(86,224,255,.2); }.part-options button.selected > svg { color: white; background: linear-gradient(145deg, #29b9d6, #6488df); }
 .locked-unit-message { margin-top: 22px; min-height: 360px; padding: 50px 24px; display: grid; place-items: center; align-content: center; text-align: center; border: 1px solid var(--glass-border); border-radius: 24px; background: linear-gradient(145deg, rgba(255,255,255,.93), rgba(228,242,252,.82)); }.locked-unit-message > svg { width: 48px; height: 48px; padding: 12px; border-radius: 15px; color: #557a99; background: #e3f0f8; }.locked-unit-message h1 { margin: 3px 0; color: #194870; }.locked-unit-message p:last-child { margin: 0; color: #6c8397; }
@@ -286,7 +285,6 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
   .unit-heading { padding: 20px 17px; }.unit-heading > div:first-child { min-width: 0; padding-right: 0; }.unit-heading::after,.unit-ring { display: none; }.unit-heading h1 { font-size: 2.75rem; }
   .part-selector .section-head { align-items: flex-end; }.part-options { grid-template-columns: 1fr; }.part-options button { min-height: 68px; }.part-options button:hover { transform: none; }
   .quick-card { min-height: 170px; align-items: flex-start; }.quick-card > div:nth-child(2) { min-width: 0; padding-top: 3px; }.quick-orbit { right: -6px; bottom: -25px; }.quick-arrow { margin-top: 13px; flex: 0 0 auto; }
-  .path-card { min-width: 0; }
   .training-category + .training-category { margin-top: 42px; }.mode-grid { grid-template-columns: 1fr; gap: 10px; }.mode-card { min-height: 136px; padding: 15px; }.mode-visual { right: 16px; width: 62px; height: 62px; }.mode-card strong { font-size: 15px; }.mode-card small { max-width: 62%; font-size: 10px; }
   .training-head { margin: 6px 8px 0; }.challenge-card { border-radius: 24px 24px 0 0; }
   .page-title { padding-left: 17px; }.grammar-health-grid { grid-template-columns: 1fr; }
@@ -330,7 +328,7 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mode-card:hover,.path-card:hover,.active-unit:hover { transform: none; }
+  .mode-card:hover,.active-unit:hover { transform: none; }
   .hero-crystal,.code-spirit { animation: none; }
 }
 
