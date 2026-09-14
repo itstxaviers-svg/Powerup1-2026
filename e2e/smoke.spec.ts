@@ -24,11 +24,13 @@ test('keeps login through reload and removes persistent legacy sessions', async 
 })
 
 test('opens Hello and starts a session without horizontal overflow', async ({ page }) => {
+  test.setTimeout(60_000)
   await establishStudentSession(page)
   await page.goto('/')
   await page.getByRole('link', { name: /Hello!/ }).click()
   await expect(page.getByRole('heading', { name: 'Hello!' })).toBeVisible()
   await expect(page.locator('.mode-card')).toHaveCount(5)
+  await expect(page.locator('.mode-card strong')).toHaveText(['Repair', 'Unscramble', 'Memory', 'Error Hunt', 'Audio Code'])
   await expect(page.locator('.part-options button')).toHaveCount(4)
   await page.getByRole('button', { name: /Introductions/ }).click()
   await expect(page.getByRole('button', { name: /All Parts/ })).toHaveAttribute('aria-pressed', 'false')

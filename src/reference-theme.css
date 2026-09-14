@@ -427,6 +427,16 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 .mode-card strong { font-size: 17px; }
 .mode-card small { color: #d8f3ff; }
 
+@media (min-width: 901px) {
+  .mode-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .mode-card { grid-column: span 2; }
+  .mode-card:nth-child(4),.mode-card:nth-child(5) { grid-column: span 3; }
+}
+
+@media (min-width: 720px) and (max-width: 900px) {
+  .mode-card:last-child { grid-column: 1 / -1; }
+}
+
 .challenge-card::before {
   left: 0;
   top: 0;

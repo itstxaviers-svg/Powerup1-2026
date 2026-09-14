@@ -14,16 +14,16 @@ const paths = [
   { id: 'mixed', title: 'Mixed Decode', detail: 'Mix every selected Part', icon: Layers3 },
 ] as const
 
-const modes: Array<{ type: TaskType; title: string; detail: string; icon: typeof Wrench; tone: string }> = [
-  { type: 'repair', title: 'Repair', detail: 'Restore missing letters', icon: Wrench, tone: 'cyan' },
-  { type: 'audio', title: 'Audio Code', detail: 'Hear the code and write it', icon: Headphones, tone: 'violet' },
-  { type: 'memory', title: 'Memory', detail: 'Scan, hide and recall', icon: BrainCircuit, tone: 'blue' },
-  { type: 'unscramble', title: 'Unscramble', detail: 'Rebuild letters or word chunks', icon: Shuffle, tone: 'violet' },
-  { type: 'error-hunt', title: 'Error Hunt', detail: 'Correct a realistic mistake', icon: ScanSearch, tone: 'pink' },
+const modes: Array<{ type: TaskType; title: string; detail: string; icon: typeof Wrench; tone: string; art: number }> = [
+  { type: 'repair', title: 'Repair', detail: 'Restore missing letters', icon: Wrench, tone: 'cyan', art: 1 },
+  { type: 'unscramble', title: 'Unscramble', detail: 'Rebuild letters or word chunks', icon: Shuffle, tone: 'violet', art: 2 },
+  { type: 'memory', title: 'Memory', detail: 'Scan, hide and recall', icon: BrainCircuit, tone: 'blue', art: 3 },
+  { type: 'error-hunt', title: 'Error Hunt', detail: 'Correct a realistic mistake', icon: ScanSearch, tone: 'pink', art: 4 },
+  { type: 'audio', title: 'Audio Code', detail: 'Hear the code and write it', icon: Headphones, tone: 'violet', art: 5 },
 ]
 
 function ModeGrid({ unitId, selectedPartsRoute }: { unitId: UnitId; selectedPartsRoute: string }) {
-  return <div className="mode-grid">{modes.map(({ type, title, detail, icon: Icon, tone }, index) => <Link to={`/train/${unitId}/${selectedPartsRoute}/mixed/${type}`} className={`mode-card mode-art-${index + 1} mode-tone-${tone}`} key={type}>
+  return <div className="mode-grid">{modes.map(({ type, title, detail, icon: Icon, tone, art }, index) => <Link to={`/train/${unitId}/${selectedPartsRoute}/mixed/${type}`} className={`mode-card mode-art-${art} mode-tone-${tone}`} key={type}>
     <span className="mode-number">{String(index + 1).padStart(2, '0')}</span><span className="mode-visual"><Icon /></span><div><strong>{title}</strong><small>{detail}</small></div>
   </Link>)}</div>
 }

@@ -1865,7 +1865,7 @@ Every design, animation, feedback message, and exercise generator should support
 
 These rules are current and override older phase notes.
 
-- Regular learning contains exactly five games: Repair, Audio Code, Memory, Unscramble and Error Hunt.
+- Regular learning contains exactly five games, displayed in this order: Repair, Unscramble, Memory, Error Hunt and Audio Code.
 - Mastery evidence ranks as Repair (low), Unscramble and Error Hunt (medium), Memory (high), and Audio Code (strongest). Repair alone can never produce mastery; mastery also requires varied modes, several independent recalls and more than one session day.
 - Part filtering always precedes mastery weighting, compatible-game selection, variation and anti-repetition. `All Parts` is selection state, not a curriculum Part. Invalid saved Part IDs safely fall back to all current Parts.
 - Battles use cumulative, unique, enabled vocabulary `word` targets only. Hello!, phrases and grammar are excluded.
