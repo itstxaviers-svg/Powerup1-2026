@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test'
-import { unit3LexicalItems } from '../src/content/unit3'
 
 async function establishStudentSession(page: Page) {
   await page.addInitScript(() => {
@@ -50,23 +49,14 @@ test('opens Hello and starts a session without horizontal overflow', async ({ pa
   expect(overflow).toBe(false)
 })
 
-test('activates Checkpoint 03 and renders its first-person battle without overflow', async ({ page }) => {
+test('opens Checkpoint 03 without Unit mastery and keeps later Units sealed', async ({ page }) => {
   await establishStudentSession(page)
   await page.goto('/')
-  await page.evaluate(async (targetIds) => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('word-code')
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-    })
-    const transaction = db.transaction('progress', 'readwrite')
-    const store = transaction.objectStore('progress')
-    const now = new Date().toISOString()
-    targetIds.forEach((targetId) => store.put({ targetId, mastery: 70, state: 'stable', attempts: 5, correct: 5, independentCorrect: 3, taskTypesSeen: ['repair', 'unscramble', 'audio'], sessionDays: ['2026-09-13', '2026-09-14'], lastSeenAt: now }))
-    await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error) })
-    db.close()
-  }, unit3LexicalItems.map((item) => item.id))
-  await page.reload()
+  await expect(page.getByRole('link', { name: /Hello!/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Unit 3/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Unit 4/ })).toHaveCount(0)
+  await expect(page.getByText('CHECKPOINT 07-A')).toBeVisible()
+  await expect(page.getByText('CHECKPOINT 03 must be won first.')).toBeVisible()
   const enterBattle = page.getByRole('link', { name: /ENTER BATTLE/ })
   await expect(enterBattle).toHaveCount(1)
   await enterBattle.click()

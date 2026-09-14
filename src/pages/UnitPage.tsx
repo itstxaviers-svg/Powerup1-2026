@@ -27,7 +27,7 @@ export function UnitPage() {
   const unitId: UnitId = /^unit-[1-9]$/.test(routeUnitId) ? routeUnitId as UnitId : 'hello'
   const unit = units.find((item) => item.id === unitId) ?? units[0]!
   const [selectedPartIds, setSelectedPartIds] = useState(() => loadPartSelection(unit.id, unit.parts))
-  const [gateOpen, setGateOpen] = useState(unit.id !== 'unit-4' && unit.id !== 'unit-8')
+  const [gateOpen, setGateOpen] = useState(() => isUnitGateOpen(unit.id, []))
 
   useEffect(() => { setSelectedPartIds(loadPartSelection(unit.id, unit.parts)) }, [unit.id, unit.parts])
   useEffect(() => { void getAllBattleProgress().then((records) => setGateOpen(isUnitGateOpen(unit.id, records))) }, [unit.id])

@@ -3,18 +3,16 @@ import { motion } from 'motion/react'
 import { Fragment, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { units } from '../content/course'
-import { getAllBattleProgress, getProgress } from '../data/db'
+import { getAllBattleProgress } from '../data/db'
 import { bosses } from '../features/battle/bosses'
 import { battleCheckpoints } from '../features/battle/config'
-import { isCheckpointComplete, isUnitComplete, isUnitGateOpen } from '../features/battle/engine'
-import type { TargetProgress } from '../domain/types'
+import { isCheckpointComplete, isCheckpointUnlocked, isUnitGateOpen } from '../features/battle/engine'
 import type { BattleProgressRecord } from '../features/battle/types'
 
 export function HomePage() {
-  const [progress, setProgress] = useState<TargetProgress[]>([])
   const [battleProgress, setBattleProgress] = useState<BattleProgressRecord[]>([])
 
-  useEffect(() => { void Promise.all([getProgress(), getAllBattleProgress()]).then(([nextProgress, nextBattles]) => { setProgress(nextProgress); setBattleProgress(nextBattles) }) }, [])
+  useEffect(() => { void getAllBattleProgress().then(setBattleProgress) }, [])
 
   return <div className="page home-page">
     <section className="hero">
@@ -38,9 +36,10 @@ export function HomePage() {
         const playable = unit.status === 'active' && gateOpen
         const checkpoint = battleCheckpoints.find((item) => item.afterUnit === unit.id)
         const checkpointRecord = checkpoint ? battleProgress.find((item) => item.id === checkpoint.id) : undefined
-        const checkpointReady = checkpoint ? isUnitComplete(unit, progress) : false
+        const checkpointReady = checkpoint ? isCheckpointUnlocked(checkpoint, battleProgress) : false
         const checkpointComplete = checkpoint ? isCheckpointComplete(checkpoint, checkpointRecord) : false
         const currentFight = checkpoint?.fights.find((item) => checkpointRecord?.pendingPurificationFightId === item.id || !checkpointRecord?.completedFightIds.includes(item.id)) ?? checkpoint?.fights.at(-1)
+        const requiredFight = checkpoint?.requiresFightId ? battleCheckpoints.flatMap((item) => item.fights).find((item) => item.id === checkpoint.requiresFightId) : undefined
         const checkpointBoss = currentFight ? bosses[currentFight.bossId] : undefined
         return <Fragment key={unit.id}>{playable ? <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * .035 }}>
         <Link to={`/unit/${unit.id}`} className="unit-card active-unit">
@@ -56,7 +55,7 @@ export function HomePage() {
         <span className="soon-tag">SEALED</span>
       </motion.article>}{checkpoint && <motion.article className={`checkpoint-card ${checkpointReady ? 'checkpoint-active' : 'checkpoint-sealed'} ${checkpointComplete ? 'checkpoint-complete' : ''}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <div className="checkpoint-signal" aria-hidden="true">{checkpointReady ? <Swords /> : <ShieldAlert />}</div>
-        <div><small>{currentFight?.label ?? checkpoint.id}</small><h3>{checkpointBoss?.name}</h3><p>{checkpointComplete ? 'CODE STABILIZED' : checkpointReady ? 'CORRUPTED SIGNAL DETECTED' : `${unit.title} must be stabilised first.`}</p></div>
+        <div><small>{currentFight?.label ?? checkpoint.id}</small><h3>{checkpointBoss?.name}</h3><p>{checkpointComplete ? 'CODE STABILIZED' : checkpointReady ? `OPEN CHALLENGE · ${checkpoint.prerequisiteLabel}` : `${requiredFight?.label ?? 'The previous checkpoint'} must be won first.`}</p></div>
         {checkpointReady && currentFight ? <Link to={`/battle/${currentFight.id}`}>{checkpointComplete ? 'REVISIT' : 'ENTER BATTLE'} <ArrowRight /></Link> : <span>CHECKPOINT SEALED</span>}
       </motion.article>}</Fragment>
       })}

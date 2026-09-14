@@ -26,7 +26,7 @@ The product will eventually contain:
 
 The existing Power Up 1 content for **Hello! and Units 1–9** is wired into the shared content model. Every Unit has serialisable Parts, and all learning sessions continue to use the same five data-driven games.
 
-Mandatory cumulative fighting checkpoints appear after Units 3, 7 and 9. Unit 4 is gated by Checkpoint 03, Unit 8 by both Checkpoint 07 fights, and final completion by both Checkpoint 09 fights. Do not invent additional curriculum to fill gaps in the existing content.
+Mandatory cumulative fighting checkpoints appear after Units 3, 7 and 9. Hello! and Units 1–3 are open immediately. Units 4–7 are gated by Checkpoint 03, Units 8–9 by both Checkpoint 07 fights, and final completion by both Checkpoint 09 fights. Checkpoint 03 is available without Unit mastery; later checkpoints unlock sequentially from the preceding checkpoint victory. Do not invent additional curriculum to fill gaps in the existing content.
 
 ---
 
@@ -1869,12 +1869,14 @@ These rules are current and override older phase notes.
 - Mastery evidence ranks as Repair (low), Unscramble and Error Hunt (medium), Memory (high), and Audio Code (strongest). Repair alone can never produce mastery; mastery also requires varied modes, several independent recalls and more than one session day.
 - Part filtering always precedes mastery weighting, compatible-game selection, variation and anti-repetition. `All Parts` is selection state, not a curriculum Part. Invalid saved Part IDs safely fall back to all current Parts.
 - Battles use cumulative, unique, enabled vocabulary `word` targets only. Hello!, phrases and grammar are excluded.
+- Hello! and Units 1–3 are open immediately. Units 4–7 remain sealed until Checkpoint 03 is won, and Units 8–9 remain sealed until both Checkpoint 07 fights are won.
+- Checkpoint 03 is an open challenge from the start and does not require Unit mastery. Checkpoint 07 opens after Checkpoint 03, and Checkpoint 09 opens after Checkpoint 07-B, so the learner may use the checkpoint route without completing regular Unit sessions.
 - Each fight uses `Math.ceil(eligibleUniqueWords / 3)` after the eligible cumulative pool is built. Image availability assigns presentation only and never filters the vocabulary pool before selection.
 - Paired fights after Units 7 and 9 are allocated together from one shuffle into non-overlapping one-third sets. Failed retries keep the same persisted word set and only reshuffle its order; only `either` items may change prompt form.
 - The only battle prompts are Audio → Type and Image → Type. There are no battle hints, answer choices, translation prompts or regular-game mechanics.
-- Checkpoint 03 uses GLITCH KITSUNE, Units 1–3, 10 seconds per answer and an 85% pass threshold.
-- Checkpoint 07-A uses NULLWEAVER and Checkpoint 07-B uses AETHER GOLEM, Units 1–7, 8 seconds per answer and 85% in each fight.
-- Super Battle 09-A uses SIGNAL SERPENT and the Final Super Battle uses THE CORRUPTED ARCHIVIST, Units 1–9, 6 seconds per answer and 85% in each fight.
+- Checkpoint 03 uses GLITCH KITSUNE, Units 1–3, 10 seconds per answer, an 85% pass threshold and a maximum of 2 mistakes.
+- Checkpoint 07-A uses NULLWEAVER and Checkpoint 07-B uses AETHER GOLEM, Units 1–7, 8 seconds per answer, 85% in each fight and a maximum of 3 mistakes per fight.
+- Super Battle 09-A uses SIGNAL SERPENT and the Final Super Battle uses THE CORRUPTED ARCHIVIST, Units 1–9, 6 seconds per answer, 85% in each fight and a maximum of 3 mistakes per fight.
 - The Corrupted Archivist is the original humanoid techno-magical archive guardian: ivory/navy robe-armour, gold details, broken archive halo and cyan/gold versus violet-magenta corruption. Never use the bird/drill/propeller concept.
 - Battles are first-person. No player avatar is visible. Correct answers send a cyan strike from the camera; wrong answers and timeouts bring the boss towards the camera with a restrained coral edge vignette and no gore.
 - Every boss reveals its name and corrupted line before `START BATTLE`. Timers cannot start before that learner action. Audio timers start only after the initial playback ends, and replay never pauses or resets a running timer.

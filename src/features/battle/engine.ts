@@ -181,13 +181,17 @@ export function accuracyPassed(correct: number, total: number, requiredAccuracy 
   return total > 0 && correct / total >= requiredAccuracy
 }
 
+export function battlePassed(correct: number, total: number, fight: Pick<BattleFightConfig, 'requiredAccuracy' | 'maxMistakes'>) {
+  return accuracyPassed(correct, total, fight.requiredAccuracy) && total - correct <= fight.maxMistakes
+}
+
 export function canResolveQuestion(phase: string) {
   return phase === 'active'
 }
 
 export function recordBattleResult(record: BattleProgressRecord, fight: BattleFightConfig, correct: number, total: number, incorrectIds: string[]) {
   const accuracy = total > 0 ? correct / total : 0
-  const passed = accuracyPassed(correct, total, fight.requiredAccuracy)
+  const passed = battlePassed(correct, total, fight)
   return {
     ...record,
     pendingPurificationFightId: passed ? fight.id : record.pendingPurificationFightId,
@@ -207,8 +211,8 @@ export function completePurification(record: BattleProgressRecord, fight: Battle
   }
 }
 
-export function isFightUnlocked(unitComplete: boolean, record: BattleProgressRecord | undefined, fight: BattleFightConfig) {
-  if (!unitComplete) return false
+export function isFightUnlocked(checkpointUnlocked: boolean, record: BattleProgressRecord | undefined, fight: BattleFightConfig) {
+  if (!checkpointUnlocked) return false
   return !fight.previousFightId || Boolean(record?.completedFightIds?.includes(fight.previousFightId))
 }
 
@@ -216,9 +220,15 @@ export function isCheckpointComplete(checkpoint: BattleCheckpointConfig, record:
   return checkpoint.fights.every((fight) => record?.completedFightIds?.includes(fight.id))
 }
 
+export function isCheckpointUnlocked(checkpoint: BattleCheckpointConfig, records: readonly BattleProgressRecord[]) {
+  if (!checkpoint.requiresFightId) return true
+  return records.some((record) => record.completedFightIds.includes(checkpoint.requiresFightId!))
+}
+
 export function isUnitGateOpen(unitId: UnitId, records: readonly BattleProgressRecord[]) {
-  if (unitId === 'unit-4') return records.some((record) => record.id === 'checkpoint-03' && record.completedFightIds?.includes('checkpoint-03'))
-  if (unitId === 'unit-8') return records.some((record) => record.id === 'checkpoint-07' && record.completedFightIds?.includes('checkpoint-07-b'))
+  const number = unitNumber(unitId)
+  if (number !== null && number >= 4 && number <= 7) return records.some((record) => record.id === 'checkpoint-03' && record.completedFightIds?.includes('checkpoint-03'))
+  if (number !== null && number >= 8) return records.some((record) => record.id === 'checkpoint-07' && record.completedFightIds?.includes('checkpoint-07-b'))
   return true
 }
 

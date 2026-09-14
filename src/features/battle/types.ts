@@ -18,6 +18,7 @@ export interface BattleFightConfig {
   poolFraction: number
   timeLimitSeconds: number
   requiredAccuracy: number
+  maxMistakes: number
   previousFightId?: BattleFightId
   unlocksUnit?: UnitId
   unlocksCourseCompletion?: boolean
@@ -26,6 +27,8 @@ export interface BattleFightConfig {
 export interface BattleCheckpointConfig {
   id: BattleCheckpointId
   afterUnit: UnitId
+  prerequisiteLabel: string
+  requiresFightId?: BattleFightId
   fights: readonly BattleFightConfig[]
 }
 

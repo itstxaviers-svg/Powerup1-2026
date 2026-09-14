@@ -2,13 +2,13 @@ import { ArrowLeft, Check, Headphones, Image as ImageIcon, RotateCcw, Shield, Sw
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { lexicalItems, units } from '../content/course'
-import { getBattleProgress, getProgress, saveBattleProgress } from '../data/db'
+import { lexicalItems } from '../content/course'
+import { getAllBattleProgress, saveBattleProgress } from '../data/db'
 import { canSpeakEnglish, speakEnglish } from '../domain/speech'
 import { BossVisual } from '../features/battle/BossVisual'
 import { bosses } from '../features/battle/bosses'
 import { getBattleCheckpoint, getBattleFight } from '../features/battle/config'
-import { accuracyPassed, buildBattleQuestions, canResolveQuestion, completePurification, ensureCheckpointAllocations, isFightUnlocked, isUnitComplete, recordBattleResult } from '../features/battle/engine'
+import { battlePassed, buildBattleQuestions, canResolveQuestion, completePurification, ensureCheckpointAllocations, isCheckpointUnlocked, isFightUnlocked, recordBattleResult } from '../features/battle/engine'
 import type { BattleProgressRecord, BattleQuestion, BossState, QuestionPhase } from '../features/battle/types'
 
 type AnswerRecord = { vocabularyId: string; answer: string; correct: boolean }
@@ -36,7 +36,7 @@ export function BattlePage() {
   const prefersReducedMotion = useReducedMotion()
   const [loading, setLoading] = useState(true)
   const [record, setRecord] = useState<BattleProgressRecord>()
-  const [unitComplete, setUnitComplete] = useState(false)
+  const [checkpointUnlocked, setCheckpointUnlocked] = useState(false)
   const [phase, setPhase] = useState<'intro' | 'question' | 'feedback' | 'purification' | 'results'>('intro')
   const [questionPhase, setQuestionPhase] = useState<QuestionPhase>('loading')
   const questionPhaseRef = useRef<QuestionPhase>('loading')
@@ -54,7 +54,7 @@ export function BattlePage() {
 
   const currentQuestion = questions[questionIndex]
   const allocation = fight ? record?.allocations[fight.id] ?? [] : []
-  const unlocked = Boolean(fight && isFightUnlocked(unitComplete, record, fight))
+  const unlocked = Boolean(fight && isFightUnlocked(checkpointUnlocked, record, fight))
   const alreadyPassed = Boolean(fight && record?.completedFightIds.includes(fight.id))
 
   const setGuardedQuestionPhase = useCallback((next: QuestionPhase) => {
@@ -64,10 +64,11 @@ export function BattlePage() {
 
   useEffect(() => {
     if (!fight || !checkpoint) { setLoading(false); return }
-    Promise.all([getBattleProgress(checkpoint.id), getProgress()]).then(([saved, progress]) => {
-      const complete = isUnitComplete(units.find((unit) => unit.id === checkpoint.afterUnit), progress)
-      setUnitComplete(complete)
-      if (!complete) { setRecord(saved); setLoading(false); return }
+    getAllBattleProgress().then((records) => {
+      const saved = records.find((item) => item.id === checkpoint.id)
+      const available = isCheckpointUnlocked(checkpoint, records)
+      setCheckpointUnlocked(available)
+      if (!available) { setRecord(saved); setLoading(false); return }
       const next = ensureCheckpointAllocations(checkpoint, saved, lexicalItems, checkpoint.id, canSpeakEnglish())
       setRecord(next)
       if (next.pendingPurificationFightId === fight.id) {
@@ -126,7 +127,7 @@ export function BattlePage() {
     const next = recordBattleResult(record, fight, correct, finalAnswers.length, incorrectIds)
     setRecord(next)
     await saveBattleProgress(next)
-    const won = accuracyPassed(correct, finalAnswers.length, fight.requiredAccuracy)
+    const won = battlePassed(correct, finalAnswers.length, fight)
     setGuardedQuestionPhase('resolved')
     setBossState(won ? 'defeat' : 'victory')
     setPhase(won ? 'purification' : 'results')
@@ -188,7 +189,7 @@ export function BattlePage() {
   const correctCount = answers.filter((answer) => answer.correct).length
   const resultAccuracy = answers.length ? correctCount / answers.length : fight ? record?.bestAccuracy[fight.id] ?? 0 : 0
   const displayedCorrect = answers.length ? correctCount : Math.round(resultAccuracy * allocation.length)
-  const passed = alreadyPassed || Boolean(fight && accuracyPassed(correctCount, answers.length, fight.requiredAccuracy))
+  const passed = alreadyPassed || Boolean(fight && battlePassed(correctCount, answers.length, fight))
   const nextFight = useMemo(() => checkpoint?.fights.find((item) => item.fightIndex === (fight?.fightIndex ?? 0) + 1), [checkpoint, fight])
 
   if (loading) return <main className="battle-page battle-loading"><span className="battle-loader" /><p>Opening checkpoint…</p></main>
@@ -196,7 +197,7 @@ export function BattlePage() {
 
   if (!unlocked) return <main className="battle-page battle-sealed" style={{ '--boss-accent': boss.accent } as React.CSSProperties}>
     <header className="battle-header"><Link to="/" aria-label="Back to course map"><ArrowLeft /></Link><span>{fight.label}</span><b>SEALED</b></header>
-    <section className="battle-stage"><BossVisual bossId={fight.bossId} state="idle" reducedMotion={Boolean(prefersReducedMotion)} /><div className="battle-intro-copy"><p>CODE FIGHTER</p><h1>{boss.name}</h1><span>{!unitComplete ? `${units.find((unit) => unit.id === checkpoint.afterUnit)?.title ?? checkpoint.afterUnit} must be stabilised first.` : `${checkpoint.fights.find((item) => item.id === fight.previousFightId)?.label ?? 'The previous fight'} must be won first.`}</span><Link className="battle-secondary" to="/"><ArrowLeft /> BACK TO COURSE MAP</Link></div></section>
+    <section className="battle-stage"><BossVisual bossId={fight.bossId} state="idle" reducedMotion={Boolean(prefersReducedMotion)} /><div className="battle-intro-copy"><p>CODE FIGHTER</p><h1>{boss.name}</h1><span>{!checkpointUnlocked ? `${checkpoint.requiresFightId ? getBattleFight(checkpoint.requiresFightId)?.label : 'The previous checkpoint'} must be won first.` : `${checkpoint.fights.find((item) => item.id === fight.previousFightId)?.label ?? 'The previous fight'} must be won first.`}</span><Link className="battle-secondary" to="/"><ArrowLeft /> BACK TO COURSE MAP</Link></div></section>
   </main>
 
   if (allocation.length === 0) return <main className="battle-page battle-sealed" style={{ '--boss-accent': boss.accent } as React.CSSProperties}>
@@ -211,7 +212,7 @@ export function BattlePage() {
       <BossVisual bossId={fight.bossId} state={bossState} reducedMotion={Boolean(prefersReducedMotion)} />
       <AnimatePresence mode="wait">
         {phase === 'intro' && <motion.div className="battle-intro-copy" key="intro" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-          <p>CORRUPTED SIGNAL DETECTED</p><h1>{boss.name}</h1><blockquote>“{boss.corruptedLine}”</blockquote><span>Decode every word. Reach {Math.ceil(fight.requiredAccuracy * 100)}% accuracy to stabilise the checkpoint.</span><div className="battle-rules"><em><Headphones /> AUDIO → TYPE</em><em><ImageIcon /> IMAGE → TYPE</em><em><Shield /> {fight.timeLimitSeconds}s EACH</em></div><button className="battle-primary" onClick={startFight}><Swords /> START BATTLE</button><small>No hints. Replays do not stop the timer.</small>
+          <p>CORRUPTED SIGNAL DETECTED</p><h1>{boss.name}</h1><blockquote>“{boss.corruptedLine}”</blockquote><span>Reach {Math.ceil(fight.requiredAccuracy * 100)}% accuracy with no more than {fight.maxMistakes} mistakes.</span><div className="battle-rules"><em><Headphones /> AUDIO → TYPE</em><em><ImageIcon /> IMAGE → TYPE</em><em><Shield /> {fight.timeLimitSeconds}s EACH</em></div><button className="battle-primary" onClick={startFight}><Swords /> START BATTLE</button><small>No hints. Replays do not stop the timer.</small>
         </motion.div>}
         {(phase === 'question' || phase === 'feedback') && currentQuestion && <motion.div className="battle-question" key={currentQuestion.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
           <div className={`battle-timer ${remaining <= 2 && questionPhase === 'active' ? 'critical' : ''}`}><span>{questionPhase === 'presenting' ? 'SIGNAL INCOMING' : `${remaining.toFixed(1)}s`}</span><i style={{ width: `${Math.min(100, (remaining / fight.timeLimitSeconds) * 100)}%` }} /></div>
@@ -225,7 +226,7 @@ export function BattlePage() {
           <p>RESTORATION COMPLETE</p><h1>{boss.name}</h1>{purificationReady ? <motion.div className="purified-dialogue" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><blockquote>“{boss.thankYouLine}”</blockquote><strong>You restored every code.</strong><button className="battle-primary" onClick={() => { void continueAfterPurification() }}>CONTINUE</button></motion.div> : <span>Corruption signal clearing…</span>}
         </motion.div>}
         {phase === 'results' && <motion.div className={`battle-results ${passed ? 'passed' : 'failed'}`} key="results" initial={{ opacity: 0, scale: .97 }} animate={{ opacity: 1, scale: 1 }}>
-          <p>{passed ? 'CODE STABILIZED' : 'CODE UNSTABLE'}</p><h1>{displayedCorrect} / {answers.length || allocation.length}</h1><strong>ACCURACY: {Math.round(resultAccuracy * 100)}%</strong><strong>REQUIRED: {Math.ceil(fight.requiredAccuracy * 100)}%</strong><span>{passed ? fight.unlocksCourseCompletion ? 'COURSE COMPLETE · THE WORD//CODE WORLD IS RESTORED' : `${boss.name} has been restored.` : 'Your word set will stay the same. Its order will change.'}</span>
+          <p>{passed ? 'CODE STABILIZED' : 'CODE UNSTABLE'}</p><h1>{displayedCorrect} / {answers.length || allocation.length}</h1><strong>ACCURACY: {Math.round(resultAccuracy * 100)}%</strong><strong>REQUIRED: {Math.ceil(fight.requiredAccuracy * 100)}% · MAX {fight.maxMistakes} MISTAKES</strong><span>{passed ? fight.unlocksCourseCompletion ? 'COURSE COMPLETE · THE WORD//CODE WORLD IS RESTORED' : `${boss.name} has been restored.` : 'Your word set will stay the same. Its order will change.'}</span>
           {!passed && <div className="battle-missed"><small>WORDS TO RESTORE</small>{answers.filter((answer) => !answer.correct).map((answer) => <b key={answer.vocabularyId}>{answer.answer}</b>)}</div>}
           <div className="battle-result-actions">{!passed && <button className="battle-primary" onClick={startFight}><RotateCcw /> RETRY BATTLE</button>}{passed && nextFight && <Link className="battle-primary" to={`/battle/${nextFight.id}`}><Swords /> NEXT FIGHT</Link>}<Link className="battle-secondary" to="/">RESTORED COURSE MAP</Link></div>
         </motion.div>}
