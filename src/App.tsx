@@ -14,7 +14,7 @@ import { AuthPage } from './pages/AuthPage'
 import { appRole } from './config/appRole'
 import { requiresLogin } from './config/appRole'
 import { TeacherAuthPage } from './pages/TeacherAuthPage'
-import { getCloudSession } from './data/cloudSession'
+import { getCloudSession, getStudentBrowserSession } from './data/cloudSession'
 import type { ReactNode } from 'react'
 import { cloudSyncEnabled } from './data/cloudSync'
 import { BattlePage } from './pages/BattlePage'
@@ -31,7 +31,7 @@ function ProtectedTeacherCoursePage() {
 
 function ProtectedStudentPage({ children }: { children: ReactNode }) {
   if (!requiresLogin) return children
-  const legacySession = localStorage.getItem('word-code:session') ?? sessionStorage.getItem('word-code:session')
+  const legacySession = getStudentBrowserSession()
   const cloudSession = getCloudSession()
   const signedIn = cloudSyncEnabled ? cloudSession?.role === 'student' : Boolean(legacySession)
   return signedIn ? children : <Navigate to="/login" replace />

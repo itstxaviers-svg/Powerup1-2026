@@ -1881,3 +1881,13 @@ These rules are current and override older phase notes.
 - Passing enters a persisted purification state before progression unlocks. The purified opponent remains visible, says its configured thank-you line followed by `You restored every code.`, and waits for `CONTINUE`. Failure never shows purification.
 - The Unit 1–3 battle image metadata maps approved local files under `assets/Power_Up_1_Units_1_3_Assets/Unit_1`, `Unit_2` and `Unit_3`. Mapped unambiguous words use `either`; unmapped or ambiguous words use Audio. The Unit 1 `crayon` target intentionally uses `17_crayons.png`, and British `rubber` remains canonical.
 - Local battle persistence retains activation, paired allocations, completed fights, best accuracy, retry weaknesses, pending purification and final course completion. Load-time normalisation supplies safe defaults without discarding older progress or obsolete regular-mode history.
+
+---
+
+## 46. Current Login Session Lifetime
+
+- Student and teacher authentication is scoped to the current browser tab or standalone app page through `sessionStorage`.
+- Reloading the page, navigating inside WORD//CODE, locking the screen or briefly backgrounding the browser must not sign the user out.
+- Closing the tab or standalone app page ends the login session. Persistent `Remember me` login is not offered.
+- Older valid sessions previously stored in `localStorage` are moved once into `sessionStorage` and removed from persistent storage, preventing a surprise sign-out during this migration.
+- Learning progress, rewards and content remain in IndexedDB/cloud storage and are never cleared when a login session ends.

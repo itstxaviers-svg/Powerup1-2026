@@ -8,7 +8,6 @@ export function TeacherAuthPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [remember, setRemember] = useState(true)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -20,7 +19,7 @@ export function TeacherAuthPage() {
     if (!cloudSyncEnabled) { setMessage('Teacher cloud access is not configured on this installation.'); return }
     setBusy(true); setMessage('')
     try {
-      await loginTeacherCloud(email.trim().toLowerCase(), password, remember)
+      await loginTeacherCloud(email.trim().toLowerCase(), password)
       navigate('/teacher')
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Login failed.') }
     finally { setBusy(false) }
@@ -31,7 +30,7 @@ export function TeacherAuthPage() {
     <section className="auth-form"><p className="kicker">TEACHER LOGIN</p><h2>Open dashboard</h2>
       <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="username" /></label>
       <label>Password<input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" /></label>
-      <label className="remember-row"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> Remember me</label>
+      <p className="session-note">Teacher access stays open while this tab is open. Closing the tab signs you out.</p>
       <button className="auth-submit" onClick={login} disabled={busy}>{busy ? 'Connecting…' : 'Enter teacher mode'} <ArrowRight /></button>
       {message && <div className="auth-message" role="alert"><ShieldCheck />{message}</div>}
       <p className="auth-switch"><Link to="/">Back to student app</Link></p>

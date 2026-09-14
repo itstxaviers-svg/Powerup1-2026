@@ -5,7 +5,7 @@ import { rewardsAssets, type SpiritAssetKey } from '../config/rewardsAssets'
 import { getStudentProfile, saveStudentPin, saveStudentProfile, verifyStudentPin } from '../data/db'
 import type { StudentProfile } from '../domain/account'
 import { cloudSyncEnabled, loginStudentCloud, registerStudentCloud } from '../data/cloudSync'
-import { saveCloudSession } from '../data/cloudSession'
+import { saveCloudSession, saveStudentBrowserSession } from '../data/cloudSession'
 
 export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const navigate = useNavigate()
@@ -15,7 +15,6 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const avatar: SpiritAssetKey = 'spark'
   const [pin, setPin] = useState('')
   const [repeatPin, setRepeatPin] = useState('')
-  const [remember, setRemember] = useState(true)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const messageRef = useRef<HTMLDivElement>(null)
@@ -34,10 +33,10 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
       setBusy(true); setMessage('')
       try {
         const result = await registerStudentCloud({ displayName: name.trim().slice(0, 24), joinCode: joinCode.trim().toUpperCase(), avatar, pin })
-        saveCloudSession(result.session, true)
+        saveCloudSession(result.session)
         await saveStudentProfile(result.profile)
         await saveStudentPin(pin)
-        localStorage.setItem('word-code:session', result.profile.studentId)
+        saveStudentBrowserSession(result.profile.studentId)
         navigate('/account')
       } catch (error) { setMessage(error instanceof Error ? error.message : 'Registration failed.') }
       finally { setBusy(false) }
@@ -47,17 +46,16 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
     const stem = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7) || 'CODE'
     const generatedId = `${stem}-${String(Math.floor(100 + Math.random() * 900))}`
     const profile: StudentProfile = { id: 'current', studentId: crypto.randomUUID(), wordcodeId: generatedId, displayName: name.trim().slice(0, 24), groupId: 'local-demo-group', groupDisplayName: 'Power Up 1 — Local', joinCode: 'PU1-DEMO', avatar, createdAt: new Date().toISOString() }
-    await saveStudentProfile(profile); await saveStudentPin(pin); localStorage.setItem('word-code:session', profile.studentId); navigate('/account')
+    await saveStudentProfile(profile); await saveStudentPin(pin); saveStudentBrowserSession(profile.studentId); navigate('/account')
   }
   const login = async () => {
     if (cloudSyncEnabled && navigator.onLine) {
       setBusy(true); setMessage('')
       try {
-        const result = await loginStudentCloud(wordcodeId.trim().toUpperCase(), pin, remember)
+        const result = await loginStudentCloud(wordcodeId.trim().toUpperCase(), pin)
         await saveStudentProfile(result.profile)
         await saveStudentPin(pin)
-        if (remember) localStorage.setItem('word-code:session', result.profile.studentId)
-        else sessionStorage.setItem('word-code:session', result.profile.studentId)
+        saveStudentBrowserSession(result.profile.studentId)
         navigate('/')
       } catch (error) { setMessage(error instanceof Error ? error.message : 'Login failed.') }
       finally { setBusy(false) }
@@ -65,8 +63,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
     }
     const profile = await getStudentProfile()
     if (profile.wordcodeId.toUpperCase() !== wordcodeId.trim().toUpperCase() || !await verifyStudentPin(pin)) { setMessage('ID or PIN is not correct.'); return }
-    if (remember) localStorage.setItem('word-code:session', profile.studentId)
-    else sessionStorage.setItem('word-code:session', profile.studentId)
+    saveStudentBrowserSession(profile.studentId)
     navigate('/')
   }
 
@@ -84,7 +81,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
       </> : <>
         <label>WORD//CODE ID<input value={wordcodeId} onChange={(event) => setWordcodeId(event.target.value)} placeholder="SASHA-482" autoCapitalize="characters" /></label>
         <label>PIN<input value={pin} onChange={(event) => setPin(cleanPin(event.target.value))} inputMode="numeric" type="password" maxLength={6} autoComplete="current-password" placeholder="••••••" /></label>
-        <label className="remember-row"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> Remember me</label>
+        <p className="session-note">Your login stays open while this tab is open. Closing the tab signs you out.</p>
         <button type="button" className="auth-submit" onClick={() => void login()} disabled={busy}>{busy ? 'Connecting…' : 'Enter'} <ArrowRight /></button><div className="forgot-pin"><KeyRound /><span><strong>Forgot your PIN?</strong> Ask your teacher to reset it.</span></div><p className="auth-switch">New explorer? <Link to="/register">Create account</Link></p>
       </>}
     </section>

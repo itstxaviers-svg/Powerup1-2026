@@ -36,9 +36,9 @@ export async function registerStudentCloud(input: { displayName: string; joinCod
   return apiRequest<StudentAuthResponse>('/student/register', { method: 'POST', body: JSON.stringify(input) })
 }
 
-export async function loginStudentCloud(wordcodeId: string, pin: string, remember: boolean) {
+export async function loginStudentCloud(wordcodeId: string, pin: string) {
   const result = await apiRequest<StudentAuthResponse>('/student/login', { method: 'POST', body: JSON.stringify({ wordcodeId, pin }) })
-  saveCloudSession(result.session, remember)
+  saveCloudSession(result.session)
   return result
 }
 
@@ -46,9 +46,9 @@ export async function changeStudentPinCloud(pin: string) {
   return apiRequest<{ ok: true }>('/student/pin', { method: 'POST', body: JSON.stringify({ pin }) }, true)
 }
 
-export async function loginTeacherCloud(email: string, password: string, remember: boolean) {
+export async function loginTeacherCloud(email: string, password: string) {
   const result = await apiRequest<{ session: StudentAuthResponse['session'] }>('/teacher/login', { method: 'POST', body: JSON.stringify({ email, password }) })
-  saveCloudSession(result.session, remember)
+  saveCloudSession(result.session)
   return result
 }
 

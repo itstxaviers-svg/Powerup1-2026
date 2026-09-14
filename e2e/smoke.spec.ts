@@ -3,10 +3,25 @@ import { unit3LexicalItems } from '../src/content/unit3'
 
 async function establishStudentSession(page: Page) {
   await page.addInitScript(() => {
-    localStorage.setItem('word-code:session', 'e2e')
-    localStorage.setItem('word-code:cloud-session', JSON.stringify({ token: 'e2e-local', role: 'student', subjectId: 'e2e', expiresAt: new Date(Date.now() + 60_000).toISOString() }))
+    sessionStorage.setItem('word-code:session', 'e2e')
+    sessionStorage.setItem('word-code:cloud-session', JSON.stringify({ token: 'e2e-local', role: 'student', subjectId: 'e2e', expiresAt: new Date(Date.now() + 60_000).toISOString() }))
   })
 }
+
+test('keeps login through reload and removes persistent legacy sessions', async ({ page }) => {
+  await page.goto('/#/login')
+  await page.evaluate(() => {
+    localStorage.setItem('word-code:session', 'legacy-e2e')
+    localStorage.setItem('word-code:cloud-session', JSON.stringify({ token: 'legacy-e2e', role: 'student', subjectId: 'legacy-e2e', expiresAt: new Date(Date.now() + 60_000).toISOString() }))
+  })
+  await page.goto('/')
+  await expect(page).not.toHaveURL(/#\/login/)
+  expect(await page.evaluate(() => localStorage.getItem('word-code:session'))).toBeNull()
+  expect(await page.evaluate(() => localStorage.getItem('word-code:cloud-session'))).toBeNull()
+  expect(await page.evaluate(() => sessionStorage.getItem('word-code:session'))).toBe('legacy-e2e')
+  await page.reload()
+  await expect(page).not.toHaveURL(/#\/login/)
+})
 
 test('opens Hello and starts a session without horizontal overflow', async ({ page }) => {
   await establishStudentSession(page)
