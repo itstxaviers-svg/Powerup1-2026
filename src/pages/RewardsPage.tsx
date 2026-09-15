@@ -60,7 +60,7 @@ export function RewardsPage() {
       <nav aria-label="Rewards navigation">
         <NavLink to="/"><span>⌂</span>Home</NavLink><NavLink to="/"><span>◈</span>Course</NavLink><NavLink to="/archive"><span>▥</span>Progress</NavLink><NavLink className="active" to="/rewards"><span>✦</span>Rewards</NavLink><NavLink to="/account"><span>●</span>Account</NavLink><NavLink to="/settings"><span>⚙</span>Settings</NavLink>
       </nav>
-      <div className="reward-student-card"><img src={rewardsAssets.spirit[profile.avatar]} alt="Code Spirit avatar" /><div><strong>{profile.displayName}</strong><span>Level {level}</span></div><small>{reward.lifetimeEnergy.toLocaleString('en-GB')} XP</small></div>
+      <div className="reward-student-card"><img src={rewardsAssets.spirit[profile.avatar]} alt="Code Spirit avatar" decoding="async" fetchPriority="high" /><div><strong>{profile.displayName}</strong><span>Level {level}</span></div><small>{reward.lifetimeEnergy.toLocaleString('en-GB')} XP</small></div>
       <div className="rhythm-card"><strong>🔥 {activeWeek} SIGNAL DAYS</strong><span>{activeWeek ? 'Keep your rhythm!' : 'Start a training today.'}</span></div>
     </aside>
 
@@ -70,15 +70,15 @@ export function RewardsPage() {
         <header className="spirit-title"><p>CODE SPIRIT</p><h1>{stage.name}</h1><span><Gem /> LEVEL {level}</span></header>
         <div className="spirit-evolution" aria-label="Code Spirit evolution">
           {spiritStages.map((item) => <div className={level >= item.minimumLevel ? item.key === stage.key ? 'current' : 'unlocked' : 'locked'} key={item.key}>
-            <span><img src={rewardsAssets.spirit[item.key]} alt="" />{level < item.minimumLevel && <LockKeyhole />}</span><small>{item.name}</small>
+            <span><img src={rewardsAssets.spirit[item.key]} alt="" decoding="async" />{level < item.minimumLevel && <LockKeyhole />}</span><small>{item.name}</small>
           </div>)}
         </div>
         <motion.div className={`spirit-hero stability-${Math.floor(reward.stability / 25)}`} initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
-          <i className="spirit-orbit orbit-a" /><i className="spirit-orbit orbit-b" /><img src={rewardsAssets.spirit[stage.key]} alt={`${stage.name} Code Spirit`} />
+          <i className="spirit-orbit orbit-a" /><i className="spirit-orbit orbit-b" /><img src={rewardsAssets.spirit[stage.key]} alt={`${stage.name} Code Spirit`} decoding="async" fetchPriority="high" />
         </motion.div>
         <div className="accessory-stack" aria-label="Spirit accessories">
           {accessoryDefinitions.map((item) => { const unlocked = level >= item.minimumLevel; return <article className={unlocked ? 'unlocked' : 'locked'} key={item.key}>
-            <span><img src={rewardsAssets.accessories[item.key]} alt="" />{!unlocked && <LockKeyhole />}</span><div><strong>{item.name}</strong><small>{unlocked ? 'Unlocked' : `Level ${item.minimumLevel}`}</small></div>
+            <span><img src={rewardsAssets.accessories[item.key]} alt="" loading="lazy" decoding="async" />{!unlocked && <LockKeyhole />}</span><div><strong>{item.name}</strong><small>{unlocked ? 'Unlocked' : `Level ${item.minimumLevel}`}</small></div>
           </article> })}
         </div>
         <div className="energy-zone">
@@ -90,7 +90,7 @@ export function RewardsPage() {
         <section className="artifacts-panel reward-glass">
           <header><div><h2>✦ MY ARTIFACTS</h2><p>Every mode can reveal a different piece of the ancient code.</p></div><span>{artifactDefinitions.filter((item) => artifactUnlocked(item.key, reward, progress, masteredCount)).length} / {artifactDefinitions.length}</span></header>
           <div className="artifact-grid">{artifactDefinitions.map((artifact) => { const unlocked = artifactUnlocked(artifact.key, reward, progress, masteredCount); const count = artifact.taskType ? reward.modeCounts[artifact.taskType] ?? 0 : artifact.key === 'masterKey' ? taskTypes.filter((type) => (reward.modeCounts[type] ?? 0) > 0).length : artifact.key === 'prismFragment' ? progress.filter((item) => item.state === 'stable' || item.state === 'mastered').length : masteredCount; return <article className={`${unlocked ? 'unlocked' : 'locked'} rarity-${artifact.rarity.toLowerCase()}`} key={artifact.key}>
-            <div><img src={rewardsAssets.artifacts[artifact.key]} alt="" />{!unlocked && <span><LockKeyhole /></span>}</div><h3>{artifact.name}</h3><p>{artifact.description}</p><footer><span>{[1,2,3,4,5].map((star) => <Star key={star} fill={star <= Math.min(5, Math.ceil(count / Math.max(1, artifact.requirement / 5))) ? 'currentColor' : 'none'} />)}</span><strong>{unlocked ? 'FOUND' : `${Math.min(count, artifact.requirement)} / ${artifact.requirement}`}</strong></footer>
+            <div><img src={rewardsAssets.artifacts[artifact.key]} alt="" loading="lazy" decoding="async" />{!unlocked && <span><LockKeyhole /></span>}</div><h3>{artifact.name}</h3><p>{artifact.description}</p><footer><span>{[1,2,3,4,5].map((star) => <Star key={star} fill={star <= Math.min(5, Math.ceil(count / Math.max(1, artifact.requirement / 5))) ? 'currentColor' : 'none'} />)}</span><strong>{unlocked ? 'FOUND' : `${Math.min(count, artifact.requirement)} / ${artifact.requirement}`}</strong></footer>
           </article> })}</div>
         </section>
       </div>
@@ -99,7 +99,7 @@ export function RewardsPage() {
         <section className="crystal-panel reward-glass">
           <header><h2>✦ CRYSTAL CORES</h2><Info /></header>
           <div className="crystal-grid">{crystals.map((crystal, index) => <article className={crystal.percent === 100 ? crystal.mastered ? 'mastered' : 'restored' : crystal.percent > 0 ? 'current' : 'locked'} key={crystal.unitId}>
-            <small>{crystal.title}</small><span><img src={rewardsAssets.accessories.crystalCore} alt="" style={{ filter: `hue-rotate(${index * 22}deg)` }} />{crystal.percent === 0 && <LockKeyhole />}</span>
+            <small>{crystal.title}</small><span><img src={rewardsAssets.accessories.crystalCore} alt="" loading="lazy" decoding="async" style={{ filter: `hue-rotate(${index * 22}deg)` }} />{crystal.percent === 0 && <LockKeyhole />}</span>
             <strong>{crystal.percent === 100 ? <CheckCircle2 /> : `${crystal.percent}%`}</strong>
           </article>)}</div>
           <div className="current-crystal"><span>Current: {currentCrystal.title} — {currentCrystal.percent}%</span><div><i style={{ width: `${currentCrystal.percent}%` }} /></div></div>
@@ -108,7 +108,7 @@ export function RewardsPage() {
         <section className="world-panel reward-glass">
           <header><h2>WORLD RESTORED</h2><strong>{restoredCount} / 10</strong></header>
           <div className="world-grid">{worldDefinitions.map((world) => { const state = crystals.find((item) => item.unitId === world.unitId)!; const unlocked = state.percent === 100; return <article className={unlocked ? state.mastered ? 'mastered' : 'unlocked' : 'locked'} key={world.key}>
-            <img src={rewardsAssets.worlds[world.key]} alt="" /><span>{world.name}</span>{unlocked ? <CheckCircle2 /> : <LockKeyhole />}
+            <img src={rewardsAssets.worlds[world.key]} alt="" loading="lazy" decoding="async" /><span>{world.name}</span>{unlocked ? <CheckCircle2 /> : <LockKeyhole />}
           </article> })}</div>
         </section>
 
@@ -117,7 +117,7 @@ export function RewardsPage() {
           <p>{reward.stability < 100 ? 'Complete one training to restore +30 Stability.' : 'Your Code Spirit is vibrant. Keep learning to unlock new powers.'}</p><Sparkles />
         </section>
 
-        <section className="reward-message reward-glass"><img src={rewardsAssets.spirit.sprite} alt="Code Spirit" /><div><strong>Study, play, grow!</strong><p>Every lesson gives your Spirit energy. Evolve, collect and restore the world.</p></div><ShieldCheck /></section>
+        <section className="reward-message reward-glass"><img src={rewardsAssets.spirit.sprite} alt="Code Spirit" loading="lazy" decoding="async" /><div><strong>Study, play, grow!</strong><p>Every lesson gives your Spirit energy. Evolve, collect and restore the world.</p></div><ShieldCheck /></section>
       </div>
     </main>
   </div>

@@ -112,7 +112,36 @@ test('loads an approved Unit 4 image prompt in Checkpoint 07 without overflow', 
   await page.getByRole('button', { name: /START BATTLE/ }).click()
   const clue = page.locator('.battle-prompt img[alt="Word clue"]')
   await expect(clue).toBeVisible()
-  expect(await clue.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)
+  const imageMetrics = await clue.evaluate((image: HTMLImageElement) => {
+    const resource = performance.getEntriesByName(image.currentSrc)[0] as PerformanceResourceTiming | undefined
+    return { naturalWidth: image.naturalWidth, source: image.currentSrc, bytes: resource?.decodedBodySize ?? 0 }
+  })
+  expect(imageMetrics.naturalWidth).toBeGreaterThan(0)
+  expect(imageMetrics.source).toContain('.webp')
+  expect(imageMetrics.bytes).toBeLessThan(150_000)
   await expect(page.getByLabel('TYPE THE CODE')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
+})
+
+test('loads compressed rewards artwork without broken images', async ({ page }) => {
+  test.setTimeout(60_000)
+  await establishStudentSession(page)
+  await page.goto('/#/rewards')
+  await expect(page.getByRole('heading', { name: 'MY ARTIFACTS' })).toBeVisible({ timeout: 20_000 })
+  const rewardMessage = page.locator('.reward-message')
+  await rewardMessage.scrollIntoViewIfNeeded()
+  await expect(rewardMessage).toBeVisible()
+  const metrics = await page.locator('.rewards-page img').evaluateAll((images: HTMLImageElement[]) => {
+    return images.map((image) => {
+      const resource = performance.getEntriesByName(image.currentSrc)[0] as PerformanceResourceTiming | undefined
+      return { source: image.currentSrc || image.src, complete: image.complete, naturalWidth: image.naturalWidth, bytes: resource?.decodedBodySize ?? 0 }
+    })
+  })
+  const loaded = metrics.filter((image) => image.complete)
+  expect(metrics.length).toBeGreaterThan(20)
+  expect(metrics.every((image) => image.source.includes('.webp'))).toBe(true)
+  expect(loaded.length).toBeGreaterThan(5)
+  expect(loaded.every((image) => image.naturalWidth > 0)).toBe(true)
+  expect(Math.max(...loaded.map((image) => image.bytes))).toBeLessThan(250_000)
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
 })

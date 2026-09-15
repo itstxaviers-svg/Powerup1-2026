@@ -13,6 +13,17 @@ export function BossVisual({ bossId, state, reducedMotion = false }: { bossId: B
     setFallback(false)
   }, [boss, state])
 
+  useEffect(() => {
+    const preloaders = [...new Set(Object.values(boss.assets))].map((asset) => {
+      const image = new Image()
+      image.decoding = 'async'
+      image.fetchPriority = 'low'
+      image.src = asset
+      return image
+    })
+    return () => { preloaders.forEach((image) => { image.src = '' }) }
+  }, [boss])
+
   const handleError = () => {
     if (source !== boss.assets.base) setSource(boss.assets.base)
     else setFallback(true)
@@ -20,6 +31,6 @@ export function BossVisual({ bossId, state, reducedMotion = false }: { bossId: B
 
   return <div className={`battle-boss boss-state-${state}${reducedMotion ? ' reduced' : ''}`} style={{ '--boss-accent': boss.accent } as React.CSSProperties}>
     <span className="boss-scan-ring" aria-hidden="true" />
-    {!fallback ? <img src={source} alt={`${boss.name}, ${state.replace('-', ' ')}`} onError={handleError} draggable={false} /> : <div className="boss-art-fallback" role="img" aria-label={`${boss.name}, signal silhouette`}><ShieldAlert /><span>{boss.name.split(' ').map((word) => word[0]).join('')}</span></div>}
+    {!fallback ? <img src={source} alt={`${boss.name}, ${state.replace('-', ' ')}`} onError={handleError} draggable={false} decoding="async" fetchPriority="high" /> : <div className="boss-art-fallback" role="img" aria-label={`${boss.name}, signal silhouette`}><ShieldAlert /><span>{boss.name.split(' ').map((word) => word[0]).join('')}</span></div>}
   </div>
 }

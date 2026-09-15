@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { lexicalItems } from '../../content/course'
 import type { LexicalItem } from '../../domain/types'
 import { getBattleCheckpoint, getBattleFight } from './config'
+import { bosses, bossStates } from './bosses'
 import { accuracyPassed, battleAnswersMatch, battlePassed, buildBattleQuestions, completePurification, emptyBattleProgress, ensureCheckpointAllocations, getEligibleBattleWords, isCheckpointUnlocked, isUnitGateOpen, recordBattleResult } from './engine'
 
 describe('cumulative battle engine', () => {
@@ -151,6 +152,8 @@ describe('cumulative battle engine', () => {
     expect(tShirt.battleImage).toMatch(/13_t_shirt/)
     expect(fishing.battleImage).toMatch(/19_fisherman/)
     expect(getEligibleBattleWords(lexicalItems, [1, 9], true).every((item) => item.battlePrompt === 'audio' || (item.battlePrompt === 'image' && Boolean(item.battleImage)))).toBe(true)
+    expect(getEligibleBattleWords(lexicalItems, [1, 9], true).filter((item) => item.battlePrompt === 'image').every((item) => item.battleImage?.includes('.webp'))).toBe(true)
+    expect(Object.values(bosses).every((boss) => bossStates.every((state) => boss.assets[state].includes('.webp')))).toBe(true)
   })
 
   it('keeps cumulative ranges, battle sizes, timers and thresholds configured', () => {

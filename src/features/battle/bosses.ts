@@ -3,11 +3,11 @@ import type { BossDefinition, BossId, BossState } from './types'
 export const bossStates: readonly BossState[] = ['base', 'idle', 'quick-attack', 'heavy-attack', 'block', 'counter', 'hit', 'ultimate', 'victory', 'defeat']
 
 const assetModules = import.meta.glob([
-  '../../../assets/battles/checkpoint-03/glitch-kitsune/*.png',
-  '../../../assets/battles/checkpoint-07/nullweaver/*.png',
-  '../../../assets/battles/checkpoint-07/aether-golem/*.png',
-  '../../../assets/battles/checkpoint-09/signal-serpent/*.png',
-  '../../../assets/battles/checkpoint-09/corrupted-archivist/*.png',
+  '../../../assets/battles/checkpoint-03/glitch-kitsune/*.webp',
+  '../../../assets/battles/checkpoint-07/nullweaver/*.webp',
+  '../../../assets/battles/checkpoint-07/aether-golem/*.webp',
+  '../../../assets/battles/checkpoint-09/signal-serpent/*.webp',
+  '../../../assets/battles/checkpoint-09/corrupted-archivist/*.webp',
 ], { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 
 function asset(path: string, fallback: string) {
@@ -15,12 +15,12 @@ function asset(path: string, fallback: string) {
 }
 
 function expectedAssets(checkpoint: string, folder: string, filename: string) {
-  const base = `${checkpoint}/${folder}/${filename}-base.png`
+  const base = `${checkpoint}/${folder}/${filename}-base.webp`
   return Object.fromEntries(bossStates.map((state) => {
-    let path = `${checkpoint}/${folder}/${filename}-${state}.png`
-    if (folder === 'nullweaver' && state === 'block') path = `${checkpoint}/${folder}/${filename}-heavy-block.png`
-    if (folder === 'corrupted-archivist' && state === 'hit') path = `${checkpoint}/${folder}/orrupted-archivist-hit.png`
-    if (folder === 'corrupted-archivist' && state === 'quick-attack') path = `${checkpoint}/${folder}/orrupted-archivist-quick-attack..png`
+    let path = `${checkpoint}/${folder}/${filename}-${state}.webp`
+    if (folder === 'nullweaver' && state === 'block') path = `${checkpoint}/${folder}/${filename}-heavy-block.webp`
+    if (folder === 'corrupted-archivist' && state === 'hit') path = `${checkpoint}/${folder}/orrupted-archivist-hit.webp`
+    if (folder === 'corrupted-archivist' && state === 'quick-attack') path = `${checkpoint}/${folder}/orrupted-archivist-quick-attack..webp`
     return [state, asset(path, base)]
   })) as Record<BossState, string>
 }

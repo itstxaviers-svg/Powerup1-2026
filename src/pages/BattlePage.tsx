@@ -92,6 +92,20 @@ export function BattlePage() {
     return () => window.clearTimeout(timer)
   }, [phase, prefersReducedMotion])
 
+  useEffect(() => {
+    if (!fight || !record) return
+    const allocatedIds = new Set(record.allocations[fight.id] ?? [])
+    const preloaders = lexicalItems.flatMap((item) => allocatedIds.has(item.id) && item.battlePrompt === 'image' && item.battleImage ? [item.battleImage] : [])
+      .map((source) => {
+        const image = new Image()
+        image.decoding = 'async'
+        image.fetchPriority = 'low'
+        image.src = source
+        return image
+      })
+    return () => { preloaders.forEach((image) => { image.src = '' }) }
+  }, [fight, record])
+
   const beginTimer = useCallback(() => {
     if (!fight) return
     deadlineRef.current = performance.now() + fight.timeLimitSeconds * 1000
@@ -216,7 +230,7 @@ export function BattlePage() {
         {(phase === 'question' || phase === 'feedback') && currentQuestion && <motion.div className="battle-question" key={currentQuestion.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
           <div className={`battle-timer ${remaining <= 2 && questionPhase === 'active' ? 'critical' : ''}`}><span>{questionPhase === 'presenting' ? 'SIGNAL INCOMING' : `${remaining.toFixed(1)}s`}</span><i style={{ width: `${Math.min(100, (remaining / fight.timeLimitSeconds) * 100)}%` }} /></div>
           <div className="battle-prompt">
-            {currentQuestion.promptType === 'audio' ? <button type="button" className="battle-audio" disabled={questionPhase === 'presenting'} onClick={() => { void playAudio(currentQuestion) }} aria-label="Replay word audio"><Volume2 /><span>{questionPhase === 'presenting' ? 'LISTEN…' : 'REPLAY SIGNAL'}</span></button> : <img src={currentQuestion.imageSrc} alt="Word clue" onLoad={() => { if (questionPhaseRef.current === 'presenting') beginTimer() }} onError={() => { if (canSpeakEnglish()) { currentQuestion.promptType = 'audio'; void presentQuestion(currentQuestion) } }} />}
+            {currentQuestion.promptType === 'audio' ? <button type="button" className="battle-audio" disabled={questionPhase === 'presenting'} onClick={() => { void playAudio(currentQuestion) }} aria-label="Replay word audio"><Volume2 /><span>{questionPhase === 'presenting' ? 'LISTEN…' : 'REPLAY SIGNAL'}</span></button> : <img src={currentQuestion.imageSrc} alt="Word clue" decoding="async" fetchPriority="high" onLoad={() => { if (questionPhaseRef.current === 'presenting') beginTimer() }} onError={() => { if (canSpeakEnglish()) { currentQuestion.promptType = 'audio'; void presentQuestion(currentQuestion) } }} />}
           </div>
           <form onSubmit={(event) => { event.preventDefault(); resolveAnswer(value) }}><label htmlFor="battle-answer">TYPE THE CODE</label><input ref={inputRef} id="battle-answer" value={value} onChange={(event) => setValue(event.target.value)} disabled={questionPhase !== 'active'} autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} inputMode="text" /><button type="submit" disabled={questionPhase !== 'active' || !value.trim()} aria-label="Submit answer"><Swords /></button></form>
           {phase === 'feedback' && <div className={`battle-feedback ${lastCorrect ? 'correct' : 'wrong'}`} role="status">{lastCorrect ? <><Check /> CODE HIT</> : <><X /> SIGNAL MISSED</>}</div>}

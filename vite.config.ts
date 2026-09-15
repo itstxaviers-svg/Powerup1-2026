@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => ({
           urlPattern: ({ request }) => request.destination === 'image',
           handler: 'CacheFirst',
           options: {
-            cacheName: 'word-code-art-v1',
-            expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            cacheName: 'word-code-art-v2',
+            expiration: { maxEntries: 260, maxAgeSeconds: 60 * 60 * 24 * 30 },
           },
         }],
       },

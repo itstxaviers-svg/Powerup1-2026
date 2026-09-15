@@ -336,7 +336,7 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
   background-image:
     linear-gradient(90deg, rgba(248,253,255,.98) 0%, rgba(245,251,255,.92) 34%, rgba(241,249,255,.45) 56%, rgba(221,241,255,.04) 82%),
     linear-gradient(180deg, rgba(255,255,255,.04), rgba(31,78,129,.08)),
-    url('/assets/world-hero.jpg');
+    url('/assets/world-hero.webp');
   background-position: center, center, center 54%;
   background-size: cover, cover, cover;
   box-shadow: 0 28px 74px rgba(38,93,151,.22), inset 0 1px 0 rgba(255,255,255,.8);
@@ -352,21 +352,21 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 .hero-copy { padding: 23px 25px; border: 1px solid rgba(255,255,255,.62); border-radius: 22px; background: rgba(248,253,255,.58); backdrop-filter: blur(12px); box-shadow: 0 18px 48px rgba(49,96,142,.12), inset 0 1px 0 white; }
 
 .active-art {
-  background-image: linear-gradient(90deg, rgba(10,35,68,.48), rgba(11,51,91,.08) 66%), url('/assets/hello-cover.jpg');
+  background-image: linear-gradient(90deg, rgba(10,35,68,.48), rgba(11,51,91,.08) 66%), url('/assets/hello-cover.webp');
   background-position: center;
   background-size: cover;
 }
 .active-art::before { opacity: .16; background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(4,29,59,.35)); }
 .active-art::after,.mini-island,.unit-orb,.active-art > i,.active-art > b { display: none; }
-.unit-one-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.jpg'); background-size: 100% 100%, 300% 300%; background-position: center, 0 0; }
-.unit-two-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.jpg'); background-size: 100% 100%, 300% 300%; background-position: center, 50% 0; }
-.unit-three-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.jpg'); background-size: 100% 100%, 300% 300%; background-position: center, 100% 0; }
-.unit-four-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.jpg'); background-size: 100% 100%, 300% 300%; background-position: center, 0 50%; }
-.unit-five-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.jpg'); background-size: 100% 100%, 300% 300%; background-position: center, 50% 50%; }
-.unit-six-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.jpg'); background-size: 100% 100%, 300% 300%; background-position: center, 100% 50%; }
-.unit-seven-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.jpg'); background-size: 100% 100%, 300% 300%; background-position: center, 0 100%; }
-.unit-eight-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.jpg'); background-size: 100% 100%, 300% 300%; background-position: center, 50% 100%; }
-.unit-nine-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.jpg'); background-size: 100% 100%, 300% 300%; background-position: center, 100% 100%; }
+.unit-one-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.webp'); background-size: 100% 100%, 300% 300%; background-position: center, 0 0; }
+.unit-two-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.webp'); background-size: 100% 100%, 300% 300%; background-position: center, 50% 0; }
+.unit-three-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.webp'); background-size: 100% 100%, 300% 300%; background-position: center, 100% 0; }
+.unit-four-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.webp'); background-size: 100% 100%, 300% 300%; background-position: center, 0 50%; }
+.unit-five-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.webp'); background-size: 100% 100%, 300% 300%; background-position: center, 50% 50%; }
+.unit-six-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.webp'); background-size: 100% 100%, 300% 300%; background-position: center, 100% 50%; }
+.unit-seven-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.webp'); background-size: 100% 100%, 300% 300%; background-position: center, 0 100%; }
+.unit-eight-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.webp'); background-size: 100% 100%, 300% 300%; background-position: center, 50% 100%; }
+.unit-nine-art { background-image: linear-gradient(90deg, rgba(10,35,68,.52), rgba(11,51,91,.05) 70%), url('/assets/unit-worlds-atlas.webp'); background-size: 100% 100%, 300% 300%; background-position: center, 100% 100%; }
 
 .learning-group-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .learning-group { min-height: 300px; padding: 20px; display: flex; flex-direction: column; gap: 17px; overflow: hidden; border: 1px solid rgba(93,168,214,.3); border-radius: 21px; color: #173b62; background: linear-gradient(145deg, rgba(255,255,255,.95), rgba(226,244,255,.88)); box-shadow: 0 13px 30px rgba(39,88,135,.1), inset 0 1px 0 white; transition: transform .2s, box-shadow .2s; }
@@ -382,7 +382,7 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 .group-2 header > span { color: #684fc5; background: linear-gradient(145deg, #f5f0ff, #e5dcff); }.group-3 header > span { color: #236ebc; }.group-4 header > span { color: #23825e; background: linear-gradient(145deg, #effff7, #dcf7e9); }
 
 .locked-art {
-  background-image: linear-gradient(180deg, rgba(14,37,75,.03) 35%, rgba(9,27,58,.56)), url('/assets/unit-worlds-atlas.jpg');
+  background-image: linear-gradient(180deg, rgba(14,37,75,.03) 35%, rgba(9,27,58,.56)), url('/assets/unit-worlds-atlas.webp');
   background-size: 100% 100%, 300% 300%;
   background-repeat: no-repeat;
 }
@@ -403,7 +403,7 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 .mode-card::before {
   z-index: -2;
   opacity: 1;
-  background-image: linear-gradient(180deg, rgba(7,27,58,.02) 36%, rgba(6,24,53,.93) 92%), url('/assets/mode-art-atlas.jpg');
+  background-image: linear-gradient(180deg, rgba(7,27,58,.02) 36%, rgba(6,24,53,.93) 92%), url('/assets/mode-art-atlas.webp');
   background-size: 100% 100%, 300% 300%;
   background-repeat: no-repeat;
 }
@@ -442,7 +442,7 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
   transform: none;
   border-radius: 0 0 42% 42%;
   opacity: .12;
-  background-image: linear-gradient(180deg, rgba(255,255,255,0), rgba(240,248,255,.9)), url('/assets/mode-art-atlas.jpg');
+  background-image: linear-gradient(180deg, rgba(255,255,255,0), rgba(240,248,255,.9)), url('/assets/mode-art-atlas.webp');
   background-size: 100% 100%, 300% 300%;
   background-repeat: no-repeat;
 }
@@ -452,7 +452,7 @@ html, body, #root { max-width: 100%; overflow-x: clip; }
 .challenge-card.mode-error-hunt::before { background-position: center, 0 50%; }
 .challenge-card.mode-audio::before { background-position: center, 50% 50%; }
 @media (max-width: 719px) {
-  .hero { min-height: 510px; background-image: linear-gradient(180deg, rgba(248,253,255,.97) 0%, rgba(246,252,255,.85) 39%, rgba(232,246,255,.08) 72%), url('/assets/world-hero.jpg'); background-position: center, 66% center; background-size: cover, cover; }
+  .hero { min-height: 510px; background-image: linear-gradient(180deg, rgba(248,253,255,.97) 0%, rgba(246,252,255,.85) 39%, rgba(232,246,255,.08) 72%), url('/assets/world-hero.webp'); background-position: center, 66% center; background-size: cover, cover; }
   .hero-copy { padding: 17px; border-radius: 17px; background: rgba(248,253,255,.68); }
   .hero h1 { font-size: clamp(2.05rem, 10.2vw, 2.55rem); }
   .active-unit .unit-copy { width: min(82%, 310px); }
