@@ -2,7 +2,13 @@ import type { BossDefinition, BossId, BossState } from './types'
 
 export const bossStates: readonly BossState[] = ['base', 'idle', 'quick-attack', 'heavy-attack', 'block', 'counter', 'hit', 'ultimate', 'victory', 'defeat']
 
-const assetModules = import.meta.glob('../../../assets/battles/**/*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+const assetModules = import.meta.glob([
+  '../../../assets/battles/checkpoint-03/glitch-kitsune/*.png',
+  '../../../assets/battles/checkpoint-07/nullweaver/*.png',
+  '../../../assets/battles/checkpoint-07/aether-golem/*.png',
+  '../../../assets/battles/checkpoint-09/signal-serpent/*.png',
+  '../../../assets/battles/checkpoint-09/corrupted-archivist/*.png',
+], { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 
 function asset(path: string, fallback: string) {
   return assetModules[`../../../assets/battles/${path}`] ?? assetModules[`../../../assets/battles/${fallback}`] ?? ''

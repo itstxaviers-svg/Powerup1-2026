@@ -135,16 +135,31 @@ export function ensureCheckpointAllocations(
   speechAvailable = true,
 ) {
   const record = existing ? normaliseBattleProgress(existing) : emptyBattleProgress(checkpoint.id)
-  if (checkpoint.fights.every((fight) => Array.isArray(record.allocations[fight.id]))) return record
-
   const firstFight = checkpoint.fights[0]
   if (!firstFight) return record
   const pool = seededShuffle(getEligibleBattleWords(items, firstFight.unitRange, speechAvailable), `${checkpoint.id}:${seed}`)
   const allocationSize = Math.ceil(pool.length * firstFight.poolFraction)
+  const poolIds = new Set(pool.map((item) => item.id))
   const allocations = { ...record.allocations }
-  checkpoint.fights.forEach((fight, fightIndex) => {
-    if (!allocations[fight.id]) allocations[fight.id] = pool.slice(fightIndex * allocationSize, (fightIndex + 1) * allocationSize).map((item) => item.id)
+  const usedIds = new Set<string>()
+  let changed = false
+
+  checkpoint.fights.forEach((fight) => {
+    const saved = allocations[fight.id]
+    const validSaved = saved?.filter((id, index) => poolIds.has(id) && !usedIds.has(id) && saved.indexOf(id) === index) ?? []
+    const needsRepair = !saved || saved.length === 0 || validSaved.length !== saved.length
+    const selected = needsRepair ? [...validSaved] : [...(saved ?? [])]
+    if (needsRepair) {
+      changed = true
+      for (const item of pool) {
+        if (selected.length >= allocationSize) break
+        if (!usedIds.has(item.id) && !selected.includes(item.id)) selected.push(item.id)
+      }
+    }
+    selected.forEach((id) => usedIds.add(id))
+    allocations[fight.id] = selected
   })
+  if (!changed) return record
   return { ...record, allocations, activated: true, updatedAt: new Date().toISOString() }
 }
 
@@ -175,6 +190,12 @@ export function buildBattleQuestions(
     }]
   })
   return seededShuffle(questions, `${seed}:order`)
+}
+
+export function battleAnswersMatch(value: string, answers: readonly string[]) {
+  const normalise = (answer: string) => answer.trim().replace(/[’‘`]/g, "'").toLocaleLowerCase('en-GB')
+  const normalised = normalise(value)
+  return answers.some((answer) => normalised === normalise(answer))
 }
 
 export function accuracyPassed(correct: number, total: number, requiredAccuracy = .85) {

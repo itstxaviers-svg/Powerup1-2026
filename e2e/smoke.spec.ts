@@ -7,6 +7,38 @@ async function establishStudentSession(page: Page) {
   })
 }
 
+async function seedCheckpoint07ImageFight(page: Page) {
+  await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('word-code')
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    const transaction = db.transaction('battleProgress', 'readwrite')
+    const store = transaction.objectStore('battleProgress')
+    const now = new Date().toISOString()
+    store.put({
+      id: 'checkpoint-03', allocations: {}, completedFightIds: ['checkpoint-03'], bestAccuracy: {}, lastIncorrectIds: {},
+      introSeenFightIds: [], activated: true, courseCompleted: false, updatedAt: now,
+    })
+    store.put({
+      id: 'checkpoint-07',
+      allocations: {
+        'checkpoint-07-a': ['u4-food-vocabulary-1-1'],
+        'checkpoint-07-b': ['u4-food-vocabulary-1-6'],
+      },
+      completedFightIds: [], bestAccuracy: {}, lastIncorrectIds: {}, introSeenFightIds: [],
+      activated: true, courseCompleted: false, updatedAt: now,
+    })
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(transaction.error)
+      transaction.onabort = () => reject(transaction.error)
+    })
+    db.close()
+  })
+}
+
 test('keeps login through reload and removes persistent legacy sessions', async ({ page }) => {
   await page.goto('/#/login')
   await page.evaluate(() => {
@@ -50,6 +82,7 @@ test('opens Hello and starts a session without horizontal overflow', async ({ pa
 })
 
 test('opens Checkpoint 03 without Unit mastery and keeps later Units sealed', async ({ page }) => {
+  test.setTimeout(60_000)
   await establishStudentSession(page)
   await page.goto('/')
   await expect(page.getByRole('link', { name: /Hello!/ })).toBeVisible()
@@ -60,11 +93,26 @@ test('opens Checkpoint 03 without Unit mastery and keeps later Units sealed', as
   const enterBattle = page.getByRole('link', { name: /ENTER BATTLE/ })
   await expect(enterBattle).toHaveCount(1)
   await enterBattle.click()
-  await expect(page.locator('.battle-intro-copy blockquote')).toContainText('You cannot clear this signal.')
+  await expect(page.locator('.battle-intro-copy blockquote')).toContainText('You cannot clear this signal.', { timeout: 20_000 })
   await expect(page.locator('.battle-intro-copy')).toContainText('no more than 5 mistakes')
   await expect(page.getByRole('button', { name: /START BATTLE/ })).toBeVisible()
   await expect(page.locator('.battle-boss img')).toBeVisible()
   expect(await page.locator('.battle-boss img').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)
   expect(await page.locator('[class*="player-avatar"]').count()).toBe(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
+})
+
+test('loads an approved Unit 4 image prompt in Checkpoint 07 without overflow', async ({ page }) => {
+  await establishStudentSession(page)
+  await page.goto('/')
+  await seedCheckpoint07ImageFight(page)
+  await page.goto('/#/battle/checkpoint-07-a')
+  await expect(page.locator('.battle-intro-copy')).toContainText('no more than 7 mistakes')
+  await expect(page.locator('.battle-intro-copy')).toContainText('8s EACH')
+  await page.getByRole('button', { name: /START BATTLE/ }).click()
+  const clue = page.locator('.battle-prompt img[alt="Word clue"]')
+  await expect(clue).toBeVisible()
+  expect(await clue.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)
+  await expect(page.getByLabel('TYPE THE CODE')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
 })

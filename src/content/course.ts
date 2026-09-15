@@ -14,10 +14,9 @@ import { battleVocabularyImages } from '../features/battle/vocabularyImages'
 type LearningGroup = { id: string; title: string; subtitle: string }
 
 function withBattleMetadata(item: LexicalItem): LexicalItem {
+  if (item.unitId === 'hello' || item.kind !== 'word') return item
   const battleImage = battleVocabularyImages[item.unitId]?.[item.text.toLocaleLowerCase('en-GB')]
-  const kind = battleImage ? 'word' : item.kind
-  if (item.unitId === 'hello' || kind !== 'word') return { ...item, kind }
-  return { ...item, kind, battlePrompt: battleImage ? 'either' : 'audio', battleImage, battleAcceptedAnswers: item.acceptedAnswers }
+  return { ...item, battlePrompt: battleImage ? 'image' : 'audio', battleImage, battleAcceptedAnswers: item.acceptedAnswers }
 }
 
 const unitLexical = [unit1LexicalItems, unit2LexicalItems, unit3LexicalItems, unit4LexicalItems, unit5LexicalItems, unit6LexicalItems, unit7LexicalItems, unit8LexicalItems, unit9LexicalItems]

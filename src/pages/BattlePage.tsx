@@ -8,15 +8,10 @@ import { canSpeakEnglish, speakEnglish } from '../domain/speech'
 import { BossVisual } from '../features/battle/BossVisual'
 import { bosses } from '../features/battle/bosses'
 import { getBattleCheckpoint, getBattleFight } from '../features/battle/config'
-import { battlePassed, buildBattleQuestions, canResolveQuestion, completePurification, ensureCheckpointAllocations, isCheckpointUnlocked, isFightUnlocked, recordBattleResult } from '../features/battle/engine'
+import { battleAnswersMatch, battlePassed, buildBattleQuestions, canResolveQuestion, completePurification, ensureCheckpointAllocations, isCheckpointUnlocked, isFightUnlocked, recordBattleResult } from '../features/battle/engine'
 import type { BattleProgressRecord, BattleQuestion, BossState, QuestionPhase } from '../features/battle/types'
 
 type AnswerRecord = { vocabularyId: string; answer: string; correct: boolean }
-
-function answersMatch(value: string, answers: readonly string[]) {
-  const normalised = value.trim().toLocaleLowerCase('en-GB')
-  return answers.some((answer) => normalised === answer.trim().toLocaleLowerCase('en-GB'))
-}
 
 async function playAudio(question: BattleQuestion) {
   if (!question.audioSrc) return speakEnglish(question.answer)
@@ -141,7 +136,7 @@ export function BattlePage() {
     if (!fight || !currentQuestion || !canResolveQuestion(questionPhaseRef.current)) return
     setGuardedQuestionPhase('submitted')
     deadlineRef.current = null
-    const correct = answersMatch(answerValue, currentQuestion.acceptedAnswers)
+    const correct = battleAnswersMatch(answerValue, currentQuestion.acceptedAnswers)
     const nextAnswers = [...answers, { vocabularyId: currentQuestion.vocabularyId, answer: currentQuestion.answer, correct }]
     setAnswers(nextAnswers)
     setLastCorrect(correct)
