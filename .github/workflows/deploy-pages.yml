@@ -34,8 +34,6 @@ jobs:
         run: npm run build -- --mode github
         env:
           VITE_APP_ROLE: student
-          VITE_REQUIRE_LOGIN: 'true'
-          VITE_YANDEX_API_URL: https://d5d0g9d295rp9cg59nvd.qsvaa8tq.apigw.yandexcloud.net
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

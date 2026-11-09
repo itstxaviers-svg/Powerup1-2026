@@ -1,8 +1,7 @@
 import { Archive, Gem, Gift, GraduationCap, Home, Settings, Sparkles, UserRound } from 'lucide-react'
 import type { PropsWithChildren } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { appRole } from '../config/appRole'
-import { getCloudSession } from '../data/cloudSession'
 
 const studentLinks = [
   { to: '/', label: 'Course', icon: Home },
@@ -17,8 +16,8 @@ const teacherLinks = [
 ]
 
 export function Shell({ children }: PropsWithChildren) {
-  const teacherSession = getCloudSession()?.role === 'teacher'
-  const isTeacher = appRole === 'teacher' || teacherSession
+  const location = useLocation()
+  const isTeacher = appRole === 'teacher' || location.pathname.startsWith('/teacher')
   const links = isTeacher ? teacherLinks : studentLinks
   const homePath = isTeacher ? '/teacher' : '/'
   return <div className="app-shell">

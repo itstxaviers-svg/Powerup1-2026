@@ -1,4 +1,16 @@
-# WORD//CODE — automatic synchronisation
+# WORD//CODE — retired Yandex synchronisation
+
+> The production application no longer uses this integration. This document and the files under `cloud/yandex` are retained only as historical deployment reference. Do not set `VITE_YANDEX_API_URL` in the production build.
+
+Current behaviour is local-first:
+
+- IndexedDB stores learning progress, rewards, sessions and battle checkpoints on the device;
+- My Account exports/imports a validated WORD//CODE backup for device transfer;
+- learners can share a teacher-report JSON file through the device share menu or a prepared email;
+- the teacher dashboard imports received reports and stores them locally;
+- existing IndexedDB data is preserved when upgrading from the former cloud-enabled build.
+
+## Historical architecture
 
 The selected production architecture is:
 

@@ -10,45 +10,24 @@ import { TrainingPage } from './pages/TrainingPage'
 import { UnitPage } from './pages/UnitPage'
 import { RewardsPage } from './pages/RewardsPage'
 import { AccountPage } from './pages/AccountPage'
-import { AuthPage } from './pages/AuthPage'
 import { appRole } from './config/appRole'
-import { requiresLogin } from './config/appRole'
-import { TeacherAuthPage } from './pages/TeacherAuthPage'
-import { getCloudSession, getStudentBrowserSession } from './data/cloudSession'
-import type { ReactNode } from 'react'
-import { cloudSyncEnabled } from './data/cloudSync'
 import { BattlePage } from './pages/BattlePage'
 
-function ProtectedTeacherPage() {
-  const session = getCloudSession()
-  return session?.role === 'teacher' ? <Shell><TeacherPage /></Shell> : <Navigate to="/teacher/login" replace />
-}
-
-function ProtectedTeacherCoursePage() {
-  const session = getCloudSession()
-  return session?.role === 'teacher' ? <Shell><TeacherCoursePage /></Shell> : <Navigate to="/teacher/login" replace />
-}
-
-function ProtectedStudentPage({ children }: { children: ReactNode }) {
-  if (!requiresLogin) return children
-  const legacySession = getStudentBrowserSession()
-  const cloudSession = getCloudSession()
-  const signedIn = cloudSyncEnabled ? cloudSession?.role === 'student' : Boolean(legacySession)
-  return signedIn ? children : <Navigate to="/login" replace />
-}
+function TeacherDashboard() { return <Shell><TeacherPage /></Shell> }
+function TeacherCourse() { return <Shell><TeacherCoursePage /></Shell> }
 
 export default function App() {
-  if (appRole === 'teacher') return <HashRouter><Routes><Route path="/teacher/login" element={<TeacherAuthPage />} /><Route path="*" element={<ProtectedTeacherPage />} /></Routes></HashRouter>
+  if (appRole === 'teacher') return <HashRouter><Routes><Route path="/teacher/course" element={<TeacherCourse />} /><Route path="*" element={<TeacherDashboard />} /></Routes></HashRouter>
   return <HashRouter><Routes>
-    <Route path="/train/:unitId/:parts/:category" element={<ProtectedStudentPage><TrainingPage /></ProtectedStudentPage>} />
-    <Route path="/train/:unitId/:parts/:category/:taskType" element={<ProtectedStudentPage><TrainingPage /></ProtectedStudentPage>} />
-    <Route path="/battle/:fightId" element={<ProtectedStudentPage><BattlePage /></ProtectedStudentPage>} />
-    <Route path="/login" element={<AuthPage mode="login" />} />
-    <Route path="/register" element={<AuthPage mode="register" />} />
-    <Route path="/teacher/login" element={<TeacherAuthPage />} />
-    <Route path="/teacher" element={<ProtectedTeacherPage />} />
-    <Route path="/teacher/course" element={<ProtectedTeacherCoursePage />} />
-    <Route path="*" element={<ProtectedStudentPage><Shell><Routes>
+    <Route path="/train/:unitId/:parts/:category" element={<TrainingPage />} />
+    <Route path="/train/:unitId/:parts/:category/:taskType" element={<TrainingPage />} />
+    <Route path="/battle/:fightId" element={<BattlePage />} />
+    <Route path="/login" element={<Navigate to="/" replace />} />
+    <Route path="/register" element={<Navigate to="/account" replace />} />
+    <Route path="/teacher/login" element={<Navigate to="/teacher" replace />} />
+    <Route path="/teacher" element={<TeacherDashboard />} />
+    <Route path="/teacher/course" element={<TeacherCourse />} />
+    <Route path="*" element={<Shell><Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/unit/:unitId" element={<UnitPage />} />
       <Route path="/rewards" element={<RewardsPage />} />
@@ -56,6 +35,6 @@ export default function App() {
       <Route path="/archive" element={<ArchivePage />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route path="/session-complete" element={<SessionCompletePage />} />
-    </Routes></Shell></ProtectedStudentPage>} />
+    </Routes></Shell>} />
   </Routes></HashRouter>
 }

@@ -1,6 +1,6 @@
 # WORD//CODE
 
-A mobile-first, offline-capable written-recall trainer for beginner English learners. The student application synchronises accounts, progress and rewards through the WORD//CODE API hosted in Yandex Cloud.
+A mobile-first, offline-capable written-recall trainer for beginner English learners. Progress, rewards and battle state are stored locally on the learner's device.
 
 ## Published application
 
@@ -25,4 +25,4 @@ npm test
 npm run test:e2e
 ```
 
-The app uses a hash router, keeps an offline copy of learner progress in IndexedDB and synchronises authorised profiles with Yandex Cloud when a connection is available. Runtime credentials and local environment files must never be committed.
+The app uses a hash router and keeps learner progress in IndexedDB. From **My Account**, learners can export a complete backup, import it on another device, or share a teacher report. The teacher dashboard imports those report files locally; no automatic cloud account or background upload is required.

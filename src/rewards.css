@@ -7,7 +7,10 @@
   display: grid;
   grid-template-columns: 154px minmax(0, 1fr);
   color: #102d68;
-  background-image: linear-gradient(90deg, rgba(236,245,255,.18), rgba(244,247,255,.28)), var(--rewards-bg);
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(91, 205, 255, .18), transparent 32rem),
+    radial-gradient(circle at 88% 12%, rgba(157, 125, 255, .14), transparent 28rem),
+    linear-gradient(135deg, #eef8ff 0%, #f8fbff 46%, #f5f1ff 100%);
   background-size: cover;
   background-position: center;
   background-attachment: fixed;

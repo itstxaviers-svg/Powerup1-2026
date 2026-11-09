@@ -7,11 +7,9 @@ import './reference-theme.css'
 import './rewards.css'
 import './account.css'
 import { applyDisplaySettings } from './data/settings'
-import { registerCloudSync } from './data/cloudSync'
 
 registerSW({ immediate: true })
 applyDisplaySettings()
-registerCloudSync()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

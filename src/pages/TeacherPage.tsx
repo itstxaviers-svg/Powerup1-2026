@@ -1,67 +1,23 @@
-import { Activity, AlertTriangle, BookOpenCheck, CheckCircle2, Copy, Database, FileJson, GraduationCap, KeyRound, LibraryBig, ShieldCheck, Trash2, UserRound, UsersRound, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Activity, AlertTriangle, BookOpenCheck, CheckCircle2, FileJson, HardDrive, LibraryBig, Trash2, Upload, UserRound, UsersRound } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
 import { grammarPoints, lexicalItems, units } from '../content/course'
-import { getProgress, getRewardState, getStudentProfile, getTrainingSessions } from '../data/db'
+import { loadTeacherReports, readTeacherReport, removeTeacherReport, saveTeacherReport, type TeacherReport } from '../data/localTransfer'
 import { daysSince, defaultRewardState, type RewardState } from '../domain/rewards'
 import { defaultStudentProfile, type StudentProfile } from '../domain/account'
 import type { TargetProgress } from '../domain/types'
-import { cloudSyncEnabled, deleteTeacherStudentCloud, getTeacherDashboardCloud, resetTeacherStudentPinCloud, type TeacherDashboardSnapshot, type TeacherStudentSnapshot } from '../data/cloudSync'
-import { getCloudSession } from '../data/cloudSession'
-
-function startOfToday() {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-}
-
-function daysBeforeToday(isoDate: string) {
-  const date = new Date(isoDate)
-  const localDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-  return Math.round((startOfToday() - localDay) / 86_400_000)
-}
-
-function formatRegistrationDate(isoDate: string) {
-  const difference = daysBeforeToday(isoDate)
-  if (difference === 0) return 'Today'
-  if (difference === 1) return 'Yesterday'
-  if (difference === 2) return '2 days ago'
-  return new Date(isoDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-}
 
 export function TeacherPage() {
-  const [group, setGroup] = useState<TeacherDashboardSnapshot['group']>({ joinCode: '', displayName: '' })
-  const [students, setStudents] = useState<TeacherStudentSnapshot[]>([])
-  const [selectedStudentId, setSelectedStudentId] = useState('')
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [deletingStudentId, setDeletingStudentId] = useState('')
-  const [resettingStudentId, setResettingStudentId] = useState('')
-  const [temporaryPin, setTemporaryPin] = useState<{ displayName: string; wordcodeId: string; pin: string } | null>(null)
-  useEffect(() => {
-    const session = getCloudSession()
-    if (cloudSyncEnabled && session?.role === 'teacher') {
-      const load = async () => {
-        setIsRefreshing(true)
-        try {
-          const snapshot = await getTeacherDashboardCloud()
-          setGroup(snapshot.group)
-          setStudents(snapshot.students)
-          setSelectedStudentId((current) => snapshot.students.some((student) => student.profile.studentId === current) ? current : (snapshot.students[0]?.profile.studentId ?? ''))
-        } catch { /* keep the latest successfully loaded list */ }
-        finally { setIsRefreshing(false) }
-      }
-      void load()
-      const timer = window.setInterval(() => { void load() }, 30_000)
-      return () => window.clearInterval(timer)
-    }
-    Promise.all([getStudentProfile(), getProgress(), getRewardState(), getTrainingSessions()]).then(([profile, progress, reward, sessions]) => {
-      setGroup({ joinCode: profile.joinCode, displayName: profile.groupDisplayName })
-      setStudents([{ profile, progress, reward, sessions }])
-      setSelectedStudentId(profile.studentId)
-    })
-  }, [])
-  const selectedStudent = students.find((student) => student.profile.studentId === selectedStudentId) ?? students[0]
-  const profile: StudentProfile = selectedStudent?.profile ?? defaultStudentProfile
-  const progress: TargetProgress[] = selectedStudent?.progress ?? []
-  const reward: RewardState = selectedStudent?.reward ?? defaultRewardState
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [reports, setReports] = useState<TeacherReport[]>(() => loadTeacherReports())
+  const [selectedStudentId, setSelectedStudentId] = useState(() => reports[0]?.student.profile.studentId ?? '')
+  const [message, setMessage] = useState('')
+  const students = reports.map((report) => report.student)
+  const selectedReport = reports.find((report) => report.student.profile.studentId === selectedStudentId) ?? reports[0]
+  const profile: StudentProfile = selectedReport?.student.profile ?? defaultStudentProfile
+  const progress: TargetProgress[] = selectedReport?.student.progress ?? []
+  const reward: RewardState = selectedReport?.student.reward ?? defaultRewardState
+
+  const targetName = (targetId: string) => lexicalItems.find((item) => item.id === targetId)?.text ?? grammarPoints.find((item) => item.id === targetId)?.title ?? targetId
   const wordErrorsFor = (items: TargetProgress[]) => [...items]
     .filter((item) => lexicalItems.some((lexical) => lexical.id === item.targetId) && item.attempts - item.correct > 0)
     .sort((a, b) => (b.attempts - b.correct) - (a.attempts - a.correct))
@@ -75,61 +31,27 @@ export function TeacherPage() {
     const weekAgo = Date.now() - 6 * 24 * 60 * 60 * 1000
     return activityDays.filter((day) => new Date(`${day}T12:00:00`).getTime() >= weekAgo).length
   }, [activityDays])
-  const studentSummary = (student: TeacherStudentSnapshot) => {
-    return {
-      inactiveDays: daysSince(student.reward.lastActivityAt),
-    }
-  }
-  const inactiveStudents = students.filter((student) => studentSummary(student).inactiveDays >= 3)
-  const registrationCounts = useMemo(() => students.reduce((counts, student) => {
-    const difference = daysBeforeToday(student.profile.createdAt)
-    if (difference === 0) counts.today += 1
-    else if (difference === 1) counts.yesterday += 1
-    else if (difference === 2) counts.twoDaysAgo += 1
-    return counts
-  }, { today: 0, yesterday: 0, twoDaysAgo: 0 }), [students])
-  const refreshStudents = async () => {
-    if (isRefreshing || !cloudSyncEnabled) return
-    setIsRefreshing(true)
+  const inactiveStudents = students.filter((student) => daysSince(student.reward.lastActivityAt) >= 3)
+  const totalReviewWords = students.reduce((total, student) => total + wordErrorsFor(student.progress).length, 0)
+
+  const importReport = async (file?: File) => {
+    if (!file) return
     try {
-      const snapshot = await getTeacherDashboardCloud()
-      setGroup(snapshot.group)
-      setStudents(snapshot.students)
-      setSelectedStudentId((current) => snapshot.students.some((student) => student.profile.studentId === current) ? current : (snapshot.students[0]?.profile.studentId ?? ''))
-    } finally { setIsRefreshing(false) }
+      const report = readTeacherReport(await file.text())
+      saveTeacherReport(report)
+      const next = loadTeacherReports()
+      setReports(next); setSelectedStudentId(report.student.profile.studentId)
+      setMessage(`${report.student.profile.displayName}'s report was imported.`)
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'The report could not be imported.') }
+    finally { if (inputRef.current) inputRef.current.value = '' }
   }
-  const deleteStudent = async (student: TeacherStudentSnapshot) => {
-    const name = student.profile.displayName
-    const confirmed = window.confirm(`Delete ${name}'s account? Their cloud progress, rewards and session history will be permanently removed.`)
-    if (!confirmed) return
-    setDeletingStudentId(student.profile.studentId)
-    try {
-      await deleteTeacherStudentCloud(student.profile.wordcodeId)
-      setStudents((current) => current.filter((item) => item.profile.studentId !== student.profile.studentId))
-      if (selectedStudentId === student.profile.studentId) setSelectedStudentId('')
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'The account could not be deleted. Please try again.')
-    } finally { setDeletingStudentId('') }
-  }
-  const resetStudentPin = async (student: TeacherStudentSnapshot) => {
-    const name = student.profile.displayName
-    const confirmed = window.confirm(`Reset ${name}'s PIN? Their account and learning progress will stay unchanged.`)
-    if (!confirmed) return
-    setResettingStudentId(student.profile.studentId)
-    try {
-      const result = await resetTeacherStudentPinCloud(student.profile.wordcodeId)
-      setTemporaryPin({ displayName: name, wordcodeId: result.wordcodeId, pin: result.temporaryPin })
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'The PIN could not be reset. Please try again.')
-    } finally { setResettingStudentId('') }
-  }
-  const copyTemporaryPin = async () => {
-    if (!temporaryPin) return
-    try { await navigator.clipboard.writeText(temporaryPin.pin) }
-    catch { window.prompt('Copy the temporary PIN:', temporaryPin.pin) }
+  const removeReport = (report: TeacherReport) => {
+    if (!window.confirm(`Remove ${report.student.profile.displayName}'s report from this device? The student's own progress will not be affected.`)) return
+    removeTeacherReport(report.student.profile.studentId)
+    const next = loadTeacherReports()
+    setReports(next); setSelectedStudentId(next[0]?.student.profile.studentId ?? '')
   }
   const signatures = grammarPoints.reduce((total, item) => total + item.examplePool.length * item.allowedTaskTypes.length, 0)
-  const targetName = (targetId: string) => lexicalItems.find((item) => item.id === targetId)?.text ?? grammarPoints.find((item) => item.id === targetId)?.title ?? targetId
   const exportBuiltIn = () => {
     const pack = { schemaVersion: 1, name: 'WORD//CODE built-in reference', createdAt: new Date().toISOString(), units, lexicalItems, grammarPoints }
     const url = URL.createObjectURL(new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' }))
@@ -137,32 +59,46 @@ export function TeacherPage() {
   }
 
   return <div className="page teacher-page teacher-dashboard">
-    <div className="page-title"><p className="kicker">TEACHER HOST / PROTECTED ROLE</p><h1>Teacher Dashboard</h1><p>See who has joined, when they practised, and which words need another review.</p></div>
-    <div className="teacher-notice"><ShieldCheck /><div><strong>Protected teacher interface</strong><span>Cloud access uses a separate teacher session. Students cannot open group data with a student account.</span></div></div>
+    <div className="page-title"><p className="kicker">TEACHER REPORT INBOX</p><h1>Teacher Dashboard</h1><p>Import result files sent by students. Reports stay on this device and are never uploaded automatically.</p></div>
+    <div className="teacher-notice"><HardDrive /><div><strong>Local teacher view</strong><span>Ask a student to open My Account → Send results, then import the received WORD//CODE report file here.</span></div></div>
+
+    <section className="teacher-import-panel">
+      <div><Upload /><span><strong>Import student report</strong><small>Choose a <code>word-code-report-*.json</code> file received by email, AirDrop or another share app.</small></span></div>
+      <button type="button" onClick={() => inputRef.current?.click()}>Choose report</button>
+      <input ref={inputRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => void importReport(event.target.files?.[0])} />
+      {message && <p role="status">{message}</p>}
+    </section>
+
     <div className="teacher-overview">
-      <article><span><UsersRound /></span><div><strong>1</strong><small>Group</small></div><em>{group.joinCode || '—'}</em></article>
-      <article><span><UserRound /></span><div><strong>{students.length}</strong><small>Students</small></div><em>{inactiveStudents.length ? `${inactiveStudents.length} need attention` : 'All registrations'}</em></article>
-      <article><span><UserRound /></span><div><strong>{registrationCounts.today}</strong><small>Joined today</small></div><em>New registrations</em></article>
-      <article><span><UserRound /></span><div><strong>{registrationCounts.yesterday}</strong><small>Joined yesterday</small></div><em>{registrationCounts.twoDaysAgo} joined 2 days ago</em></article>
+      <article><span><UsersRound /></span><div><strong>{students.length}</strong><small>Students</small></div><em>Saved reports</em></article>
+      <article><span><FileJson /></span><div><strong>{reports.length}</strong><small>Reports</small></div><em>Newest report kept per student</em></article>
+      <article><span><AlertTriangle /></span><div><strong>{totalReviewWords}</strong><small>Words to review</small></div><em>Across imported reports</em></article>
+      <article><span><Activity /></span><div><strong>{inactiveStudents.length}</strong><small>Need attention</small></div><em>No activity for 3+ days</em></article>
     </div>
-    {inactiveStudents.length > 0 && <section className="attention-panel"><header><AlertTriangle /><div><strong>NEEDS ATTENTION — {inactiveStudents.length}</strong><span>Linked to student CODE DECAY</span></div></header>{inactiveStudents.map((student) => { const days = studentSummary(student).inactiveDays; return <div key={student.profile.studentId}><b>{student.profile.displayName}</b><span>{student.profile.groupDisplayName}</span><em>{days} days ago</em></div> })}</section>}
+
     <div className="teacher-dashboard-grid">
-      <section className="teacher-data-card students-card"><header><div><p className="kicker">STUDENTS</p><h2>Student overview</h2></div><span>GROUP: {group.joinCode || '—'} · <button type="button" className="teacher-refresh" onClick={() => { void refreshStudents() }} disabled={isRefreshing}>{isRefreshing ? 'Updating…' : 'Refresh'}</button></span></header>
-        <div className="registration-summary"><span><strong>{registrationCounts.today}</strong>joined today</span><span><strong>{registrationCounts.yesterday}</strong>joined yesterday</span><span><strong>{registrationCounts.twoDaysAgo}</strong>joined 2 days ago</span></div>
-        {temporaryPin && <div className="teacher-pin-result" role="status"><KeyRound /><div><strong>New PIN for {temporaryPin.displayName}</strong><span>{temporaryPin.wordcodeId} · Give this PIN to the student.</span></div><code>{temporaryPin.pin}</code><button type="button" onClick={() => { void copyTemporaryPin() }}><Copy size={15} /> Copy PIN</button><button type="button" className="teacher-pin-close" onClick={() => setTemporaryPin(null)} aria-label="Close temporary PIN"><X size={16} /></button></div>}
-        <div className="teacher-table"><div className="teacher-table-head"><span>Student</span><span>Joined</span><span>Words to review</span><span>Last activity</span><span>Account</span></div>{students.length ? students.map((student) => { const summary = studentSummary(student); const deleting = deletingStudentId === student.profile.studentId; const resetting = resettingStudentId === student.profile.studentId; const wordErrors = wordErrorsFor(student.progress).slice(0, 3); const hasWordPractice = student.progress.some((item) => lexicalItems.some((lexical) => lexical.id === item.targetId) && item.attempts > 0); return <article key={student.profile.studentId} className={student.profile.studentId === profile.studentId ? 'selected' : ''} role="button" tabIndex={0} onClick={() => setSelectedStudentId(student.profile.studentId)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedStudentId(student.profile.studentId) }}><div><b>{student.profile.displayName}</b><small>{student.profile.wordcodeId}</small></div><time>{formatRegistrationDate(student.profile.createdAt)}</time><div className="teacher-word-errors">{wordErrors.length ? wordErrors.map((item) => <span key={item.targetId}>{targetName(item.targetId)} · {item.attempts - item.correct}</span>) : <small>{hasWordPractice ? 'No word errors' : 'No word practice yet'}</small>}</div><em>{summary.inactiveDays === 0 ? 'Today' : `${summary.inactiveDays} days ago`}</em><div className="teacher-account-actions"><button type="button" className="teacher-reset-pin" disabled={resetting || deleting} onClick={(event) => { event.stopPropagation(); void resetStudentPin(student) }} aria-label={`Reset ${student.profile.displayName}'s PIN`}><KeyRound size={14} />{resetting ? 'Resetting…' : 'Reset PIN'}</button><button type="button" className="teacher-delete" disabled={deleting || resetting} onClick={(event) => { event.stopPropagation(); void deleteStudent(student) }} aria-label={`Delete ${student.profile.displayName}'s account`}><Trash2 size={14} />{deleting ? 'Deleting…' : 'Delete'}</button></div></article> }) : <div className="mini-empty"><UserRound /><span>No students have joined this group yet.</span></div>}</div>
+      <section className="teacher-data-card students-card"><header><div><p className="kicker">IMPORTED REPORTS</p><h2>Student overview</h2></div><span>LOCAL DEVICE</span></header>
+        <div className="teacher-table"><div className="teacher-table-head"><span>Student</span><span>Received</span><span>Words to review</span><span>Last activity</span><span>Report</span></div>{reports.length ? reports.map((report) => {
+          const student = report.student
+          const wordErrors = wordErrorsFor(student.progress).slice(0, 3)
+          return <article key={student.profile.studentId} className={student.profile.studentId === profile.studentId ? 'selected' : ''} role="button" tabIndex={0} onClick={() => setSelectedStudentId(student.profile.studentId)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedStudentId(student.profile.studentId) }}><div><b>{student.profile.displayName}</b><small>{student.profile.wordcodeId}</small></div><time>{new Date(report.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</time><div className="teacher-word-errors">{wordErrors.length ? wordErrors.map((item) => <span key={item.targetId}>{targetName(item.targetId)} · {item.attempts - item.correct}</span>) : <small>No word errors</small>}</div><em>{student.reward.lastActivityAt ? new Date(student.reward.lastActivityAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'No activity'}</em><div className="teacher-account-actions"><button type="button" className="teacher-delete" onClick={(event) => { event.stopPropagation(); removeReport(report) }} aria-label={`Remove ${student.profile.displayName}'s report`}><Trash2 size={14} />Remove</button></div></article>
+        }) : <div className="mini-empty"><Upload /><span>No reports imported yet.</span></div>}</div>
       </section>
     </div>
-    <div className="teacher-dashboard-grid">
-      <section className="teacher-data-card"><header><div><p className="kicker">SELECTED STUDENT / UNITS</p><h2>{profile.displayName ? `${profile.displayName}'s learning map` : 'Learning map'}</h2></div><BookOpenCheck /></header>{studiedUnits.length ? <div className="student-unit-list">{studiedUnits.map(({ unit, targets, independent }) => <article key={unit.id}><span>{unit.order}</span><div><strong>{unit.title}</strong><small>{targets.length} targets practised · {independent} independent decodes</small></div><em>{targets.filter((item) => item.state === 'mastered').length} mastered</em></article>)}</div> : <div className="mini-empty"><BookOpenCheck /><span>No unit activity has been recorded yet.</span></div>}</section>
-      <section className="teacher-data-card practice-frequency-card"><header><div><p className="kicker">ACTIVITY FREQUENCY</p><h2>Study rhythm</h2></div><Activity /></header><div><span><strong>{activeDaysLastWeek}</strong>active days in the last 7 days</span><span><strong>{activityDays.length}</strong>active days recorded in total</span><span><strong>{activityDays.at(-1) ? new Date(`${activityDays.at(-1)}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</strong>last recorded activity</span></div></section>
-    </div>
-    <div className="teacher-dashboard-grid">
-      <section className="teacher-data-card"><header><div><p className="kicker">FREQUENT WORD ERRORS</p><h2>Words to review</h2></div><AlertTriangle /></header>{frequentWordErrors.length ? <div className="problem-list">{frequentWordErrors.map((item, index) => <article key={item.targetId}><b>{index + 1}</b><span><strong>{targetName(item.targetId)}</strong><small>{item.attempts - item.correct} errors · {item.mastery}% mastery</small></span><em>{item.state}</em></article>)}</div> : <div className="mini-empty"><CheckCircle2 /><span>No word errors have been recorded yet.</span></div>}</section>
-    </div>
+
+    {selectedReport && <>
+      <div className="teacher-dashboard-grid">
+        <section className="teacher-data-card"><header><div><p className="kicker">SELECTED STUDENT / UNITS</p><h2>{profile.displayName}'s learning map</h2></div><BookOpenCheck /></header>{studiedUnits.length ? <div className="student-unit-list">{studiedUnits.map(({ unit, targets, independent }) => <article key={unit.id}><span>{unit.order}</span><div><strong>{unit.title}</strong><small>{targets.length} targets practised · {independent} independent decodes</small></div><em>{targets.filter((item) => item.state === 'mastered').length} mastered</em></article>)}</div> : <div className="mini-empty"><BookOpenCheck /><span>No unit activity has been recorded yet.</span></div>}</section>
+        <section className="teacher-data-card practice-frequency-card"><header><div><p className="kicker">ACTIVITY FREQUENCY</p><h2>Study rhythm</h2></div><Activity /></header><div><span><strong>{activeDaysLastWeek}</strong>active days in the last 7 days</span><span><strong>{activityDays.length}</strong>active days recorded in total</span><span><strong>{activityDays.at(-1) ? new Date(`${activityDays.at(-1)}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</strong>last recorded activity</span></div></section>
+      </div>
+      <div className="teacher-dashboard-grid">
+        <section className="teacher-data-card"><header><div><p className="kicker">FREQUENT WORD ERRORS</p><h2>Words to review</h2></div><AlertTriangle /></header>{frequentWordErrors.length ? <div className="problem-list">{frequentWordErrors.map((item, index) => <article key={item.targetId}><b>{index + 1}</b><span><strong>{targetName(item.targetId)}</strong><small>{item.attempts - item.correct} errors · {item.mastery}% mastery</small></span><em>{item.state}</em></article>)}</div> : <div className="mini-empty"><CheckCircle2 /><span>No word errors have been recorded yet.</span></div>}</section>
+      </div>
+    </>}
+
     <section className="library-health"><div className="section-head"><div><p className="kicker">CONTENT & DATA</p><h2>System health</h2></div></div>
       <div className="health-row"><article><strong>{units.filter((unit) => unit.status === 'active').length}</strong><span>playable units</span></article><article><strong>{units.reduce((total, unit) => total + unit.parts.length, 0)}</strong><span>Unit Parts</span></article><article><strong>5</strong><span>game modes</span></article><article><strong>{lexicalItems.length}</strong><span>lexical targets</span></article><article><strong>{signatures}+</strong><span>grammar signatures</span></article></div>
-      <div className="teacher-actions"><button className="outline-button" onClick={exportBuiltIn}><FileJson /> Export content pack</button><button className="outline-button"><Database /> Cloud sync ready</button><button className="outline-button"><GraduationCap /> Account management</button><button className="outline-button"><LibraryBig /> Grammar library</button></div>
+      <div className="teacher-actions"><button className="outline-button" onClick={exportBuiltIn}><FileJson /> Export content pack</button><button className="outline-button" onClick={() => inputRef.current?.click()}><Upload /> Import student report</button><button className="outline-button"><HardDrive /> Local storage</button><button className="outline-button"><LibraryBig /> Grammar library</button></div>
     </section>
   </div>
 }

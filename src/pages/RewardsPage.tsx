@@ -54,7 +54,7 @@ export function RewardsPage() {
   const currentCrystal = crystals.find((item) => item.percent < 100) ?? crystals.at(-1)!
   const activeWeek = reward.activeDays.filter((day) => Date.now() - new Date(`${day}T00:00:00`).getTime() < 7 * 86_400_000).length
 
-  return <div className="rewards-page" style={{ '--rewards-bg': `url(${rewardsAssets.background})` } as React.CSSProperties}>
+  return <div className="rewards-page">
     <aside className="rewards-sidebar">
       <NavLink to="/" className="reward-brand"><span><Gem /></span><strong>WORD<span>//</span>CODE</strong><small>ENGLISH DECODING SYSTEM</small></NavLink>
       <nav aria-label="Rewards navigation">

@@ -19,6 +19,16 @@ interface WordCodeDB extends DBSchema {
   battleProgress: { key: BattleCheckpointId; value: BattleProgressRecord }
 }
 
+export interface LocalProgressSnapshot {
+  progress: TargetProgress[]
+  taskHistory: Array<{ signature: string; seenAt: string }>
+  customContent: Array<{ key: string; value: unknown }>
+  reward: RewardState
+  trainingSessions: TrainingSessionRecord[]
+  profile: StudentProfile
+  battleProgress: BattleProgressRecord[]
+}
+
 const dbPromise = typeof indexedDB === 'undefined' ? null : openDB<WordCodeDB>('word-code', 5, {
   upgrade(db) {
     if (!db.objectStoreNames.contains('progress')) db.createObjectStore('progress', { keyPath: 'targetId' })
@@ -33,7 +43,10 @@ const dbPromise = typeof indexedDB === 'undefined' ? null : openDB<WordCodeDB>('
   },
 })
 
-const cloudQueueEnabled = Boolean((import.meta.env.VITE_YANDEX_API_URL as string | undefined)?.trim())
+// WORD//CODE is local-first. The legacy queue is kept in the database schema so
+// existing installations can upgrade without losing or rebuilding IndexedDB,
+// but new activity is never sent to the retired Yandex backend.
+const cloudQueueEnabled = false
 
 async function enqueueSyncEvent(db: Awaited<NonNullable<typeof dbPromise>>, type: SyncEventType, entityId: string, payload: SyncEventPayload, studentId?: string) {
   if (!cloudQueueEnabled) return
@@ -258,4 +271,99 @@ export async function resetProgress() {
   const db = await dbPromise
   const transaction = db.transaction(['progress', 'battleProgress'], 'readwrite')
   await Promise.all([transaction.objectStore('progress').clear(), transaction.objectStore('battleProgress').clear(), transaction.done])
+}
+
+export async function exportLocalProgressSnapshot(): Promise<LocalProgressSnapshot> {
+  if (!dbPromise) {
+    return {
+      progress: [], taskHistory: [], customContent: [], reward: defaultRewardState,
+      trainingSessions: [], profile: defaultStudentProfile, battleProgress: [],
+    }
+  }
+  const db = await dbPromise
+  const customKeys = await db.getAllKeys('customContent')
+  const customValues = await db.getAll('customContent')
+  return {
+    progress: (await db.getAll('progress')).map(normaliseProgress),
+    taskHistory: await db.getAll('taskHistory'),
+    customContent: customValues.map((value, index) => ({ key: String(customKeys[index] ?? index), value })),
+    reward: await getRewardState(),
+    trainingSessions: await db.getAll('trainingSessions'),
+    profile: await db.get('studentProfile', 'current') ?? defaultStudentProfile,
+    battleProgress: (await db.getAll('battleProgress')).map(normaliseBattleProgress),
+  }
+}
+
+function mergeProgress(current: TargetProgress | undefined, incoming: TargetProgress) {
+  if (!current) return normaliseProgress(incoming)
+  const latest = current.lastSeenAt >= incoming.lastSeenAt ? current : incoming
+  return normaliseProgress({
+    ...latest,
+    targetId: incoming.targetId,
+    mastery: Math.max(current.mastery, incoming.mastery),
+    attempts: Math.max(current.attempts, incoming.attempts),
+    correct: Math.max(current.correct, incoming.correct),
+    independentCorrect: Math.max(current.independentCorrect, incoming.independentCorrect),
+    taskTypesSeen: currentTaskTypes([...current.taskTypesSeen, ...incoming.taskTypesSeen]),
+    sessionDays: Array.from(new Set([...current.sessionDays, ...incoming.sessionDays])).sort(),
+    lastSeenAt: current.lastSeenAt >= incoming.lastSeenAt ? current.lastSeenAt : incoming.lastSeenAt,
+  })
+}
+
+function mergeReward(current: RewardState, incoming: RewardState): RewardState {
+  const modeCounts = Object.fromEntries(taskTypes.map((type) => [type, Math.max(current.modeCounts[type] ?? 0, incoming.modeCounts[type] ?? 0)])) as RewardState['modeCounts']
+  return {
+    id: 'current',
+    lifetimeEnergy: Math.max(current.lifetimeEnergy, incoming.lifetimeEnergy),
+    bonusEnergy: Math.max(current.bonusEnergy, incoming.bonusEnergy),
+    stability: Math.max(current.stability, incoming.stability),
+    lastActivityAt: [current.lastActivityAt, incoming.lastActivityAt].filter((value): value is string => Boolean(value)).sort().at(-1) ?? null,
+    activeDays: Array.from(new Set([...current.activeDays, ...incoming.activeDays])).sort().slice(-120),
+    modeCounts,
+    unlockedAccessories: Array.from(new Set([...current.unlockedAccessories, ...incoming.unlockedAccessories])),
+  }
+}
+
+function mergeBattle(current: BattleProgressRecord | undefined, incoming: BattleProgressRecord) {
+  const next = normaliseBattleProgress(incoming)
+  if (!current) return next
+  const previous = normaliseBattleProgress(current)
+  const bestAccuracy = { ...previous.bestAccuracy }
+  Object.entries(next.bestAccuracy).forEach(([fightId, accuracy]) => {
+    if (typeof accuracy === 'number') bestAccuracy[fightId as keyof typeof bestAccuracy] = Math.max(bestAccuracy[fightId as keyof typeof bestAccuracy] ?? 0, accuracy)
+  })
+  return normaliseBattleProgress({
+    ...(previous.updatedAt >= next.updatedAt ? previous : next),
+    id: next.id,
+    allocations: { ...previous.allocations, ...next.allocations },
+    completedFightIds: Array.from(new Set([...previous.completedFightIds, ...next.completedFightIds])),
+    bestAccuracy,
+    lastIncorrectIds: { ...previous.lastIncorrectIds, ...next.lastIncorrectIds },
+    introSeenFightIds: Array.from(new Set([...previous.introSeenFightIds, ...next.introSeenFightIds])),
+    activated: previous.activated || next.activated,
+    courseCompleted: previous.courseCompleted || next.courseCompleted,
+    updatedAt: previous.updatedAt >= next.updatedAt ? previous.updatedAt : next.updatedAt,
+  })
+}
+
+export async function mergeLocalProgressSnapshot(snapshot: LocalProgressSnapshot) {
+  if (!dbPromise) return
+  const db = await dbPromise
+  const transaction = db.transaction(['progress', 'taskHistory', 'customContent', 'rewardState', 'trainingSessions', 'studentProfile', 'syncQueue', 'battleProgress'], 'readwrite')
+  for (const incoming of snapshot.progress) {
+    const current = await transaction.objectStore('progress').get(incoming.targetId)
+    await transaction.objectStore('progress').put(mergeProgress(current, incoming))
+  }
+  for (const item of snapshot.taskHistory) await transaction.objectStore('taskHistory').put(item)
+  for (const item of snapshot.customContent) await transaction.objectStore('customContent').put(item.value, item.key)
+  const currentReward = await transaction.objectStore('rewardState').get('current') ?? defaultRewardState
+  await transaction.objectStore('rewardState').put(mergeReward(currentReward, snapshot.reward))
+  for (const session of snapshot.trainingSessions) await transaction.objectStore('trainingSessions').put(session)
+  await transaction.objectStore('studentProfile').put(snapshot.profile)
+  for (const incoming of snapshot.battleProgress) {
+    const current = await transaction.objectStore('battleProgress').get(incoming.id)
+    await transaction.objectStore('battleProgress').put(mergeBattle(current, incoming))
+  }
+  await transaction.objectStore('syncQueue').clear()
+  await transaction.done
 }

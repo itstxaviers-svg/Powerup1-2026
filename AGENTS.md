@@ -1896,3 +1896,19 @@ These rules are current and override older phase notes.
 - Closing the tab or standalone app page ends the login session. Persistent `Remember me` login is not offered.
 - Older valid sessions previously stored in `localStorage` are moved once into `sessionStorage` and removed from persistent storage, preventing a surprise sign-out during this migration.
 - Learning progress, rewards and content remain in IndexedDB/cloud storage and are never cleared when a login session ends.
+
+---
+
+## 47. Current Local-First Data Transfer
+
+These rules are newer than section 46 and override its cloud/login requirements.
+
+- The production build does not require student or teacher authentication and does not configure the retired Yandex API.
+- Progress, rewards, session history, profile data and battle checkpoints remain in the existing `word-code` IndexedDB database. Upgrades must never clear or replace that database.
+- New activity is not queued or uploaded automatically. The legacy `syncQueue` store may remain in the schema solely for non-destructive migration compatibility.
+- My Account provides a validated, versioned JSON backup. On supported phones it uses the native Web Share sheet; elsewhere it downloads the file.
+- Import merges progress and completed battles with existing device data instead of resetting them. Invalid or unrelated JSON files are rejected before any write.
+- Optional student and teacher email addresses are saved locally and are never treated as verified authentication.
+- `Send results` creates a versioned teacher-report JSON file and a readable summary. Native sharing may send the file through email, AirDrop or another app; the desktop fallback downloads the report and opens a prepared email when a teacher address is available.
+- The teacher dashboard is a local report inbox. It imports teacher-report files, keeps only the newest report per student, and never changes or deletes the learner's device data.
+- Teacher reports and email preferences remain local to the browser where they were imported or entered.

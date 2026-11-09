@@ -6,7 +6,6 @@ import memoryCrystal from '../../assets/artifact-memory-crystal.webp'
 import prismFragment from '../../assets/artifact-prism-fragment.webp'
 import repairGear from '../../assets/artifact-repair-gear.webp'
 import sentenceCore from '../../assets/artifact-sentence-core.webp'
-import rewardsBackground from '../../assets/rewards-sanctuary-bg.webp'
 import crystalCore from '../../assets/spirit-crystal-core.webp'
 import decoderHalo from '../../assets/spirit-decoder-halo.webp'
 import guardian from '../../assets/spirit-guardian.webp'
@@ -29,7 +28,6 @@ import tropicalCodingCove from '../../assets/world-unit-8.webp'
 import auroraPeaks from '../../assets/world-unit-9.webp'
 
 export const rewardsAssets = {
-  background: rewardsBackground,
   spirit: { spark, sprite, spirit, guardian, master },
   accessories: { crystalCore, neonWings, starAura, decoderHalo, prismTrail },
   artifacts: { memoryCrystal, audioOrb, repairGear, decoderLens, sentenceCore, masterKey, prismFragment, ancientCode },
